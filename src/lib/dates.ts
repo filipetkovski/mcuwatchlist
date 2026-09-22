@@ -2,7 +2,7 @@
 
 const DAY_MS = 86_400_000;
 
-function toUTC(date: string): number {
+export function toUTC(date: string): number {
   const [y, m, d] = date.split("-").map(Number);
   return Date.UTC(y, m - 1, d);
 }

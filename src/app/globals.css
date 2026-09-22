@@ -97,16 +97,7 @@ h1.font-display {
   20%, 40% { transform: rotate(16deg); }
 }
 
-@keyframes alarm-blink {
-  0%, 100% { background-color: #ffd23f; box-shadow: 0 0 8px 2px rgb(255 210 63 / 0.9); }
-  50% { background-color: #fff; box-shadow: none; }
-}
-
 .alarm-ring {
   transform-origin: 50% 10%;
   animation: alarm-ring 2.4s ease-in-out infinite;
-}
-
-.alarm-blink {
-  animation: alarm-blink 0.9s steps(1, end) infinite;
 }

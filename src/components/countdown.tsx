@@ -1,25 +1,44 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
-import { diffDays, todayISO } from "@/lib/dates";
+import { toUTC } from "@/lib/dates";
 import { DOOMSDAY_RELEASE } from "@/lib/paths";
 
-const noopSubscribe = () => () => {};
-const daysLeft = () => diffDays(todayISO(), DOOMSDAY_RELEASE);
-const serverDays = () => null;
+const subscribeTick = (callback: () => void) => {
+  const id = setInterval(callback, 1000);
+  return () => clearInterval(id);
+};
+const getNow = () => Date.now();
+const getServerNow = () => null;
 
-/** The bar fills over this many days leading up to release. */
-const WINDOW_DAYS = 180;
-const SEGMENTS = 30;
-/** Alarm mode: the bell rings and the leading segment flashes. */
+const TARGET_MS = toUTC(DOOMSDAY_RELEASE);
+const DAY_MS = 86_400_000;
+const HOUR_MS = 3_600_000;
+const MINUTE_MS = 60_000;
+
+/** Alarm mode: the bell rings when release is this close. */
 const ALARM_DAYS = 100;
 
+const pad = (n: number) => String(n).padStart(2, "0");
+
 export function Countdown() {
-  const days = useSyncExternalStore(noopSubscribe, daysLeft, serverDays);
-  const released = days !== null && days <= 0;
-  const remaining = days === null ? WINDOW_DAYS : Math.min(Math.max(days, 0), WINDOW_DAYS);
-  const filled = Math.round(((WINDOW_DAYS - remaining) / WINDOW_DAYS) * SEGMENTS);
+  const now = useSyncExternalStore(subscribeTick, getNow, getServerNow);
+  const remainingMs = now === null ? null : Math.max(TARGET_MS - now, 0);
+  const released = remainingMs !== null && remainingMs <= 0;
+
+  const days = remainingMs === null ? null : Math.floor(remainingMs / DAY_MS);
+  const hours = remainingMs === null ? null : Math.floor((remainingMs % DAY_MS) / HOUR_MS);
+  const minutes = remainingMs === null ? null : Math.floor((remainingMs % HOUR_MS) / MINUTE_MS);
+  const seconds = remainingMs === null ? null : Math.floor((remainingMs % MINUTE_MS) / 1000);
+
   const alarm = days !== null && days <= ALARM_DAYS;
+
+  const units: Array<[string, number | null, boolean]> = [
+    ["Days", days, false],
+    ["Hours", hours, true],
+    ["Min", minutes, true],
+    ["Sec", seconds, true],
+  ];
 
   return (
     <div className="comic-panel w-full bg-accent p-3 sm:p-4" role="timer" aria-label="Countdown to Avengers: Doomsday">
@@ -37,44 +56,28 @@ export function Countdown() {
             d="M12 2.5a1.6 1.6 0 0 1 1.6 1.6v.5c2.6.7 4.4 3 4.4 5.8v3.6l1.8 2.8c.4.6 0 1.4-.8 1.4H5c-.8 0-1.2-.8-.8-1.4L6 13.4V9.8c0-2.8 1.8-5.1 4.4-5.8v-.5A1.6 1.6 0 0 1 12 2.5ZM9.8 19h4.4a2.2 2.2 0 0 1-4.4 0Z"
           />
         </svg>
-        <div className="min-w-0 flex-1">
-          {released ? (
-            <p className="font-display text-2xl text-white sm:text-4xl">In theaters now!</p>
-          ) : (
-            <p className="flex items-baseline gap-2 text-white">
-              <span className="font-display text-3xl leading-none tabular-nums [text-shadow:2px_2px_0_#000] sm:text-5xl">
-                {days ?? "--"}
-              </span>
-              <span className="font-display text-xl sm:text-2xl">days to go</span>
-            </p>
-          )}
-        </div>
-      </div>
-
-      <div
-        className="mt-2 flex h-5 gap-[3px] rounded-md border-[3px] border-black bg-black p-[3px] sm:h-6"
-        role="progressbar"
-        aria-valuemin={0}
-        aria-valuemax={100}
-        aria-valuenow={Math.round((filled / SEGMENTS) * 100)}
-        aria-label="Progress toward release"
-      >
-        {Array.from({ length: SEGMENTS }, (_, i) => {
-          const on = i < filled;
-          const leading = alarm && !released && i === filled - 1;
-          return (
-            <span
-              key={i}
-              className={`flex-1 rounded-[2px] ${on ? "bg-warn" : "bg-white/15"} ${leading ? "alarm-blink" : ""}`}
-            />
-          );
-        })}
-      </div>
-
-      <p className="mt-1.5 flex justify-between text-xs font-semibold uppercase tracking-wide text-white/90">
-        <span>Now</span>
-        <span>Avengers: Doomsday · Dec 18, 2026</span>
+        {released ? (
+          <p className="font-display text-2xl text-white sm:text-4xl">In theaters now!</p>
+        ) : (
+          <p className="font-display text-xl text-white sm:text-2xl">Counting down to Doomsday</p>
+        )}
+        <p className="text-center text-xs font-semibold uppercase tracking-wide text-white/90">
+        Avengers: Doomsday · Dec 18, 2026
       </p>
+      </div>
+
+      {!released && (
+        <div className="mt-3 grid grid-cols-4 gap-2 sm:gap-3">
+          {units.map(([label, value, padded]) => (
+            <div key={label} className="rounded-lg border-2 border-black bg-black/30 px-1 py-1.5 text-center sm:px-2">
+              <div className="font-display text-2xl leading-none tabular-nums text-white [text-shadow:2px_2px_0_#000] sm:text-4xl">
+                {value === null ? "--" : padded ? pad(value) : value}
+              </div>
+              <div className="mt-1 text-[10px] font-semibold uppercase tracking-wide text-white/80 sm:text-xs">{label}</div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

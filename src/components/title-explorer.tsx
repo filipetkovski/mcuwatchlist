@@ -9,6 +9,9 @@ import type { Importance, OrderType, Title, TitleType } from "@/lib/types";
 import { useApp } from "./app-provider";
 import { DoomsdayBadge, ImportanceBadge } from "./badges";
 import { Dashboard } from "./dashboard";
+import { AvengersMask } from "./avengers-mask";
+import { DoomMask } from "./doom-mask";
+import { IronManMask } from "./iron-man-mask";
 import { ProgressNotices } from "./progress-notices";
 
 interface Props {
@@ -108,13 +111,51 @@ export function TitleExplorer({ titles, initialOrder, orderBasePath }: Props) {
     <div className="space-y-6">
       <div className="space-y-2">
         <p className="text-xs font-medium uppercase tracking-wide text-muted">Path</p>
-        <div className="flex flex-wrap gap-2" role="group" aria-label="Path">
-          {pathOptions.map((p) => (
-            <Chip key={p.id} active={p.id === activePathId} onClick={() => choosePath(p.id)} tone={p.id === "prepare-for-doomsday" ? "doom" : "default"}>
-              {p.saved && <span aria-hidden="true">★ </span>}
-              {p.name}
-            </Chip>
-          ))}
+        <div className="flex flex-wrap gap-3" role="group" aria-label="Path">
+          {pathOptions.map((p) => {
+            const doom = p.id === "prepare-for-doomsday";
+            const ironMan = p.id === "new-to-marvel";
+            const avengers = p.id === "rewatch-essentials";
+            const active = p.id === activePathId;
+            return (
+              <button
+                key={p.id}
+                type="button"
+                aria-pressed={active}
+                onClick={() => choosePath(p.id)}
+                className={`relative flex items-center gap-2 overflow-hidden rounded-xl border-2 border-black bg-gradient-to-b px-4 py-3 text-left transition-transform hover:-translate-y-0.5 ${
+                  doom || ironMan || avengers ? "" : active ? "from-accent to-surface" : "from-surface-2 to-surface"
+                } ${active ? "shadow-[3px_3px_0_#000]" : "opacity-70 shadow-none"}`}
+                style={
+                  doom
+                    ? { background: "linear-gradient(160deg, #1f8a4f 0%, #0f5a33 55%, #08301c 100%)" }
+                    : ironMan
+                      ? { background: "linear-gradient(160deg, #d22030 0%, #8f0d1a 55%, #4a0710 100%)" }
+                      : avengers
+                        ? { background: "linear-gradient(160deg, #7cc3ff 0%, #2e6fd9 55%, #123a73 100%)" }
+                        : undefined
+                }
+              >
+                {doom && (
+                  <DoomMask className="pointer-events-none absolute -bottom-4 -right-3 h-16 w-auto select-none opacity-70" />
+                )}
+                {ironMan && (
+                  <IronManMask className="pointer-events-none absolute -bottom-4 -right-3 h-16 w-auto select-none opacity-70" />
+                )}
+                {avengers && (
+                  <AvengersMask className="pointer-events-none absolute -bottom-4 -right-3 h-14 w-auto select-none opacity-70" />
+                )}
+                <span
+                  className={`relative font-display text-sm font-semibold sm:text-base ${
+                    doom ? "text-[#b8f7cd]" : ironMan ? "text-[#ffcf6b]" : avengers ? "text-[#cfe8ff]" : ""
+                  }`}
+                >
+                  {p.saved && <span aria-hidden="true">★ </span>}
+                  {p.name}
+                </span>
+              </button>
+            );
+          })}
         </div>
         <p className="text-xs text-muted">Each path keeps its own checked titles.</p>
       </div>
@@ -124,15 +165,16 @@ export function TitleExplorer({ titles, initialOrder, orderBasePath }: Props) {
 
       <div className="flex flex-wrap items-center gap-3">
         <OrderToggle order={order} onChange={setOrder} basePath={orderBasePath} pathId={activePathId} />
-        <input
-          type="search"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search titles"
-          aria-label="Search titles"
-          className="min-w-0 flex-1 rounded-lg border-2 border-black bg-surface-2 px-3 py-2 text-sm placeholder:text-muted sm:max-w-xs"
-        />
       </div>
+
+      <input
+        type="search"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        placeholder="Search titles"
+        aria-label="Search titles"
+        className="w-full rounded-lg border-2 border-black bg-surface-2 px-3 py-2 text-sm placeholder:text-muted"
+      />
 
       <div className="space-y-3 comic-panel p-4">
         <FilterRow label="Type">
@@ -297,55 +339,77 @@ function TitleRow({
   onToggle: (watched: boolean) => void;
   onMarkThrough: () => void;
 }) {
-  const inputId = `watched-${t.id}`;
   return (
     <li
-      className={`group flex items-center gap-3 comic-panel p-3 transition-colors hover:border-muted/60 sm:gap-4 ${
-        watched ? "opacity-60" : ""
+      role="checkbox"
+      aria-checked={watched}
+      aria-label={`Mark ${t.title} as watched`}
+      tabIndex={0}
+      onClick={() => onToggle(!watched)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onToggle(!watched);
+        }
+      }}
+      className={`group flex cursor-pointer items-stretch overflow-hidden comic-panel transition-colors ${
+        watched ? "" : "hover:border-muted/60"
       }`}
+      style={watched ? { borderColor: "#1f8a4f", backgroundColor: "rgb(31 138 79 / 0.4)" } : undefined}
     >
-      <span className="w-7 shrink-0 text-right font-mono text-xs tabular-nums text-muted">{position}</span>
-      <input
-        id={inputId}
-        type="checkbox"
-        checked={watched}
-        onChange={(e) => onToggle(e.target.checked)}
-        className="h-5 w-5 shrink-0 cursor-pointer accent-[var(--color-accent)]"
-      />
-      <Poster title={t} />
-      <label htmlFor={inputId} className="min-w-0 flex-1 cursor-pointer">
-        <span className={`block font-medium leading-snug ${watched ? "line-through decoration-muted" : ""}`}>{t.title}</span>
-        <span className="mt-0.5 block text-xs text-muted">
-          {TYPE_LABEL[t.type]} · {releaseYear(t.release_date)} · {formatRuntime(t.runtime_minutes)}
-          {t.universe === "non_marvel_studios" && " · Non-Marvel Studios"}
+      <div className="relative shrink-0 self-stretch">
+        <Poster title={t} />
+        <span className="absolute left-1 top-1 flex h-5 w-5 items-center justify-center rounded-full border-2 border-black bg-surface-2 font-mono text-[10px] tabular-nums text-muted shadow-[2px_2px_0_#000]">
+          {position}
         </span>
-        <span className="mt-1.5 flex flex-wrap gap-1.5">
-          <ImportanceBadge importance={t.importance} />
-          <DoomsdayBadge title={t} />
-        </span>
-      </label>
-      <button
-        type="button"
-        onClick={onMarkThrough}
-        title="Mark this and everything before it as watched"
-        aria-label={`Mark ${t.title} and everything before it as watched`}
-        className="shrink-0 rounded-md border border-line px-2 py-1 text-xs text-muted transition-colors hover:border-muted hover:text-ink sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100"
-      >
-        <span aria-hidden="true" className="sm:hidden">
-          ↑ All
-        </span>
-        <span aria-hidden="true" className="hidden sm:inline">
-          Watched through here
-        </span>
-      </button>
+      </div>
+      <div className="flex min-w-0 flex-1 flex-col justify-center py-2 pl-3 pr-2 sm:py-2.5 sm:pl-4 sm:pr-2.5">
+        <div className="min-w-0">
+          <span className={`block font-display text-base font-semibold leading-snug sm:text-lg ${watched ? "line-through decoration-muted" : ""}`}>
+            {t.title}
+          </span>
+          <span className="mt-0.5 block text-xs text-muted sm:text-sm">
+            {TYPE_LABEL[t.type]} · {releaseYear(t.release_date)} · {formatRuntime(t.runtime_minutes)}
+            {t.universe === "non_marvel_studios" && " · Non-Marvel Studios"}
+          </span>
+          <span className="mt-1.5 flex flex-wrap gap-1.5">
+            <ImportanceBadge importance={t.importance} />
+            <DoomsdayBadge title={t} />
+          </span>
+        </div>
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onMarkThrough();
+          }}
+          title="Mark this and everything before it as watched"
+          aria-label={`Mark ${t.title} and everything before it as watched`}
+          className="mt-2 self-start shrink-0 rounded-md border border-line px-2 py-1 text-xs text-muted transition-colors hover:border-muted hover:text-ink sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100"
+        >
+          <span aria-hidden="true" className="sm:hidden">
+            ↑ All
+          </span>
+          <span aria-hidden="true" className="hidden sm:inline">
+            Watched through here
+          </span>
+        </button>
+      </div>
     </li>
   );
 }
 
 function Poster({ title }: { title: Title }) {
   if (title.poster_url) {
-    // eslint-disable-next-line @next/next/no-img-element
-    return <img src={title.poster_url} alt="" loading="lazy" className="h-16 w-11 shrink-0 rounded-md object-cover" />;
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={title.poster_url}
+        alt=""
+        loading="lazy"
+        className="h-full w-14 shrink-0 border-r-2 border-black object-cover sm:w-20"
+      />
+    );
   }
   const initials = title.title
     .replace(/[^A-Za-z0-9 ]/g, "")
@@ -358,7 +422,7 @@ function Poster({ title }: { title: Title }) {
   return (
     <div
       aria-hidden="true"
-      className="flex h-16 w-11 shrink-0 items-center justify-center rounded-md bg-gradient-to-br from-surface-2 to-line font-display text-sm font-bold text-muted"
+      className="flex h-full w-14 shrink-0 items-center justify-center border-r-2 border-black bg-gradient-to-br from-surface-2 to-line font-display text-xs font-bold text-muted sm:w-20 sm:text-base"
     >
       {initials || "M"}
     </div>

@@ -48,19 +48,6 @@ export function Dashboard({ titles, label, pathId }: { titles: Title[]; label: s
         </h2>
         <span className="text-xs text-muted">{dataReady ? "Saved to your account" : "Loading…"}</span>
       </div>
-      <div className="mt-4 flex items-center gap-3">
-        <div
-          className="h-2.5 flex-1 overflow-hidden rounded-full bg-surface-2"
-          role="progressbar"
-          aria-valuenow={stats.percent}
-          aria-valuemin={0}
-          aria-valuemax={100}
-          aria-label={`${stats.percent}% watched`}
-        >
-          <div className="h-full rounded-full bg-gradient-to-r from-accent to-violet transition-[width] duration-500" style={{ width: `${stats.percent}%` }} />
-        </div>
-        <span className="w-10 text-right font-mono text-sm tabular-nums">{stats.percent}%</span>
-      </div>
       <dl className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-5">
         {tiles.map(([name, value]) => (
           <div key={name} className="rounded-xl bg-surface-2 px-3 py-2.5">

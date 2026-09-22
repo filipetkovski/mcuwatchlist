@@ -1,8 +1,8 @@
 export function SiteFooter() {
   return (
-    <footer className="mt-12 border-t border-line">
-      <div className="mx-auto w-full max-w-6xl px-4 py-8 text-sm text-muted sm:px-6">
-        <p className="font-display text-base font-semibold text-ink">MCU Watchlist</p>
+    <footer className="mt-12 border-t-4 border-black bg-accent shadow-[0_-4px_0_var(--color-violet)]">
+      <div className="mx-auto w-full max-w-6xl px-4 py-8 text-sm text-white/80 sm:px-6">
+        <p className="font-display text-base font-semibold text-white">MCU Watchlist</p>
         <p className="mt-2 max-w-3xl">
           This is an unofficial fan project. It is not affiliated with, endorsed by, or connected to Marvel,
           Marvel Studios, or The Walt Disney Company. Marvel, the Marvel Cinematic Universe, and all related

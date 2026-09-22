@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
+    "posters:fetch": "node scripts/fetch-posters.ts",
     "seed:generate": "node scripts/generate-seed.ts",
     "db:setup": "node scripts/generate-seed.ts && node scripts/db-setup.ts",
     "check:schedule": "node scripts/check-schedule.ts",

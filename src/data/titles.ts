@@ -1,4 +1,5 @@
 import type { Importance, Title, TitleType, Universe } from "../lib/types";
+import { POSTERS } from "./posters.ts";
 
 // Curated catalog, listed in story (in-universe) order; story_order_index is derived from position.
 // Importance and leads_into_doomsday are this project's own editorial calls based on publicly
@@ -96,6 +97,6 @@ export const TITLES: Title[] = rows.map(([id, title, type, release_date, runtime
   runtime_minutes,
   universe: opts?.universe ?? "mcu",
   importance,
-  poster_url: null,
+  poster_url: POSTERS[id] ?? null,
   leads_into_doomsday: opts?.leads ?? false,
 }));

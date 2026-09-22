@@ -187,5 +187,6 @@ Next will pick 3001. A previous dev or production server may still be running.
 
 Importance ratings and Doomsday links are editorial opinions based on public announcements, not official guidance. TV
 runtimes are approximate season totals. Titles released or announced in 2026 are marked *unconfirmed*; verify their
-dates and runtimes in `src/data/titles.ts`. Poster images are placeholders until a poster source (for example TMDB) is
-added.
+dates and runtimes in `src/data/titles.ts`. Poster images come from TMDB: run `npm run posters:fetch` (needs
+`TMDB_API_KEY` in `.env.local`, get a free key at themoviedb.org/settings/api) to (re)populate `src/data/posters.ts`.
+Titles without a match keep the initials placeholder in the UI.
