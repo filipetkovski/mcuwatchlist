@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState, useSyncExternalStore } from "react";
 import { formatRuntime, releaseYear } from "@/lib/format";
 import { PATHS } from "@/lib/paths";
+import { PATH_QUERY_EVENT } from "@/lib/path-event";
 import { sortTitles } from "@/lib/titles";
 import type { Importance, OrderType, Title, TitleType } from "@/lib/types";
 import { useApp } from "./app-provider";
@@ -38,13 +39,12 @@ const IMPORTANCE_OPTIONS: Array<[Importance, string]> = [
 
 // The selected path lives in the URL (?path=...). Read it as an external store so the statically
 // generated page still server-renders the full list (useSearchParams would defer it to the client).
-const PATH_EVENT = "mcuw:path-change";
 const subscribePath = (cb: () => void) => {
   window.addEventListener("popstate", cb);
-  window.addEventListener(PATH_EVENT, cb);
+  window.addEventListener(PATH_QUERY_EVENT, cb);
   return () => {
     window.removeEventListener("popstate", cb);
-    window.removeEventListener(PATH_EVENT, cb);
+    window.removeEventListener(PATH_QUERY_EVENT, cb);
   };
 };
 const getPathParam = () => new URLSearchParams(window.location.search).get("path");
@@ -85,7 +85,7 @@ export function TitleExplorer({ titles, initialOrder, orderBasePath }: Props) {
     if (id === DEFAULT_PATH) url.searchParams.delete("path");
     else url.searchParams.set("path", id);
     window.history.replaceState(null, "", url);
-    window.dispatchEvent(new Event(PATH_EVENT));
+    window.dispatchEvent(new Event(PATH_QUERY_EVENT));
   };
 
   const scoped = sortTitles(isAllMcuPath && includeNonMarvel ? titles : titles.filter(selected.include), order);
@@ -116,24 +116,23 @@ export function TitleExplorer({ titles, initialOrder, orderBasePath }: Props) {
             const ironMan = p.id === "new-to-marvel";
             const avengers = p.id === "rewatch-essentials";
             const active = p.id === activePathId;
+            const activeBg = doom
+              ? "linear-gradient(160deg, #1f8a4f 0%, #0f5a33 55%, #08301c 100%)"
+              : ironMan
+                ? "linear-gradient(160deg, #d22030 0%, #8f0d1a 55%, #4a0710 100%)"
+                : avengers
+                  ? "linear-gradient(160deg, #7cc3ff 0%, #2e6fd9 55%, #123a73 100%)"
+                  : "var(--color-accent)";
             return (
               <button
                 key={p.id}
                 type="button"
                 aria-pressed={active}
                 onClick={() => choosePath(p.id)}
-                className={`relative flex items-center gap-2 overflow-hidden rounded-xl border-2 border-black bg-gradient-to-b px-4 py-3 text-left transition-transform hover:-translate-y-0.5 ${
-                  doom || ironMan || avengers ? "" : active ? "from-accent to-surface" : "from-surface-2 to-surface"
-                } ${active ? "shadow-[3px_3px_0_#000]" : "opacity-70 shadow-none"}`}
-                style={
-                  doom
-                    ? { background: "linear-gradient(160deg, #1f8a4f 0%, #0f5a33 55%, #08301c 100%)" }
-                    : ironMan
-                      ? { background: "linear-gradient(160deg, #d22030 0%, #8f0d1a 55%, #4a0710 100%)" }
-                      : avengers
-                        ? { background: "linear-gradient(160deg, #7cc3ff 0%, #2e6fd9 55%, #123a73 100%)" }
-                        : undefined
-                }
+                className={`relative flex items-center gap-2 overflow-hidden rounded-xl border-2 border-black px-4 py-3 text-left transition-transform hover:-translate-y-0.5 ${
+                  active ? "text-white" : "bg-surface-2 text-muted hover:text-ink"
+                }`}
+                style={active ? { background: activeBg } : undefined}
               >
                 {doom && (
                   <DoomMask className="pointer-events-none absolute -bottom-4 -right-3 h-16 w-auto select-none opacity-70" />
@@ -146,7 +145,7 @@ export function TitleExplorer({ titles, initialOrder, orderBasePath }: Props) {
                 )}
                 <span
                   className={`relative font-display text-sm font-semibold sm:text-base ${
-                    doom ? "text-[#b8f7cd]" : ironMan ? "text-[#ffcf6b]" : avengers ? "text-[#cfe8ff]" : ""
+                    active && doom ? "text-[#b8f7cd]" : active && ironMan ? "text-[#ffcf6b]" : active && avengers ? "text-[#cfe8ff]" : ""
                   }`}
                 >
                   {p.saved && <span aria-hidden="true">★ </span>}
@@ -419,7 +418,7 @@ function Poster({ title }: { title: Title }) {
         src={title.poster_url}
         alt=""
         loading="lazy"
-        className="h-full w-30 shrink-0 border-r-2 border-black object-cover sm:w-20"
+        className="h-full w-25 shrink-0 border-r-2 border-black object-cover sm:w-25"
       />
     );
   }

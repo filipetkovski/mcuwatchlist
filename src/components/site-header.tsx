@@ -13,7 +13,7 @@ export function SiteHeader() {
   const [open, setOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-30 border-b-4 border-black bg-accent shadow-[0_4px_0_var(--color-violet)]">
+    <header className="site-header sticky top-0 z-30 border-b-4 border-black bg-accent shadow-[0_4px_0_var(--color-violet)]">
       <div className="mx-auto flex w-full max-w-6xl items-center gap-4 px-4 py-3 sm:px-6">
         <Link
           href="/"

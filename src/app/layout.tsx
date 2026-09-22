@@ -3,6 +3,7 @@ import { Geist, Geist_Mono, Bangers } from "next/font/google";
 import "./globals.css";
 import { AppProvider } from "@/components/app-provider";
 import { AppShell } from "@/components/app-shell";
+import { DoomThemeWatcher } from "@/components/doom-theme-watcher";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 
@@ -30,6 +31,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${geistSans.variable} ${geistMono.variable} ${comic.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col">
+        <DoomThemeWatcher />
         <AppProvider>
           <AppShell>
             <SiteHeader />

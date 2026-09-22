@@ -20,6 +20,11 @@
 
 :root {
   color-scheme: dark;
+  --dot-color: rgb(77 155 255 / 0.22);
+}
+
+html.doom-active {
+  --dot-color: rgb(45 200 120 / 0.3);
 }
 
 html,
@@ -29,13 +34,20 @@ body {
 
 body {
   background:
-    radial-gradient(circle at 1.5px 1.5px, rgb(77 155 255 / 0.22) 1.5px, transparent 1.8px) 0 0 / 14px 14px,
+    radial-gradient(circle at 1.5px 1.5px, var(--dot-color) 1.5px, transparent 1.8px) 0 0 / 14px 14px,
     radial-gradient(900px 500px at 100% -10%, rgb(255 59 63 / 0.35), transparent 60%),
     radial-gradient(900px 500px at -10% 10%, rgb(77 155 255 / 0.25), transparent 60%),
     var(--color-bg);
   background-attachment: fixed;
   color: var(--color-ink);
   font-family: var(--font-sans), system-ui, sans-serif;
+}
+
+/* Doomsday path selected on the watch-order page: tint the chrome to match. */
+html.doom-active .site-header,
+html.doom-active footer,
+html.doom-active #mobile-nav {
+  background: linear-gradient(160deg, #1f8a4f 0%, #0f5a33 55%, #08301c 100%);
 }
 
 .font-display {
