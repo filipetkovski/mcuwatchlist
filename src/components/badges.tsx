@@ -1,10 +1,10 @@
 import type { Importance, Title } from "@/lib/types";
 
 const styles: Record<Importance, string> = {
-  essential: "border-accent/50 bg-accent/10 text-accent-text",
-  recommended: "border-violet/40 bg-violet/10 text-violet",
-  optional: "border-line bg-surface-2 text-muted",
-  unconfirmed: "border-warn/40 border-dashed bg-warn/10 text-warn",
+  essential: "border-2 border-black bg-red-500 text-white shadow-[2px_2px_0_#000] font-black",
+  recommended: "border-2 border-black bg-yellow-400 text-black shadow-[2px_2px_0_#000] font-black",
+  optional: "border-2 border-black bg-surface-2 text-muted shadow-[1px_1px_0_#000] font-bold",
+  unconfirmed: "border-2 border-dashed border-black bg-warn/20 text-warn font-bold",
 };
 
 const labels: Record<Importance, string> = {
@@ -16,7 +16,7 @@ const labels: Record<Importance, string> = {
 
 export function ImportanceBadge({ importance }: { importance: Importance }) {
   return (
-    <span className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide ${styles[importance]}`}>
+    <span className={`rounded px-2 py-0.5 text-[11px] uppercase tracking-wide font-display ${styles[importance]}`}>
       {labels[importance]}
     </span>
   );

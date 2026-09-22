@@ -44,8 +44,10 @@ export function TitleExplorer({ titles, initialOrder, orderBasePath }: Props) {
   const [types, setTypes] = useState<Set<TitleType>>(new Set());
   const [importances, setImportances] = useState<Set<Importance>>(new Set());
   const [universeFilter, setUniverseFilter] = useState<"all" | "mcu" | "xmen">("all");
-  const [status, setStatus] = useState<"unwatched" | "watched">("unwatched");
+  const [status, setStatus] = useState<"all" | "unwatched" | "watched" | "skipped">("all");
   const [query, setQuery] = useState("");
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [skipped, setSkipped] = useState<Set<string>>(new Set());
 
   const activePathId: string = user?.pathId ?? DEFAULT_PATH;
   const pathDef = PATHS.find((p) => p.id === activePathId);
@@ -71,15 +73,10 @@ export function TitleExplorer({ titles, initialOrder, orderBasePath }: Props) {
     (t) =>
       (types.size === 0 || types.has(t.type)) &&
       (importances.size === 0 || importances.has(t.importance)) &&
-      (status === "watched") === watchedIn(t.id) &&
+      (status === "all" || (status === "skipped" ? skipped.has(t.id) : !skipped.has(t.id) && (status === "watched") === watchedIn(t.id))) &&
       (q === "" || t.title.toLowerCase().includes(q)),
   );
-  const filtersActive = types.size > 0 || importances.size > 0 || status !== "unwatched" || q !== "";
-
-  const markThrough = (id: string) => {
-    const idx = scoped.findIndex((t) => t.id === id);
-    setWatched(activePathId, scoped.slice(0, idx + 1).map((t) => t.id), true);
-  };
+  const filtersActive = types.size > 0 || importances.size > 0 || status !== "all" || q !== "";
 
   return (
     <div className="space-y-6">
@@ -90,47 +87,61 @@ export function TitleExplorer({ titles, initialOrder, orderBasePath }: Props) {
         <OrderToggle order={order} onChange={setOrder} basePath={orderBasePath} />
       </div>
 
-      <div className="comic-panel space-y-4 p-4">
-        <input
-          type="search"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search titles"
-          aria-label="Search titles"
-          className="w-full rounded-lg border-2 border-black bg-surface-2 px-3 py-2 text-sm placeholder:text-muted shadow-[3px_3px_0_#000]"
-        />
+      <div className="comic-panel p-4">
+        <div className="flex items-center gap-3">
+          <input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search titles"
+            aria-label="Search titles"
+            className="min-w-0 flex-1 rounded-lg border-2 border-black bg-surface-2 px-3 py-2 text-sm placeholder:text-muted shadow-[3px_3px_0_#000]"
+          />
+          <button
+            type="button"
+            aria-expanded={filtersOpen}
+            onClick={() => setFiltersOpen((o) => !o)}
+            className={`comic-btn shrink-0 rounded-lg border-2 border-black px-3 py-2 text-sm font-semibold shadow-[3px_3px_0_#000] transition-colors ${filtersOpen ? "bg-accent text-white" : filtersActive ? "bg-violet text-white" : "bg-surface-2 text-muted hover:text-ink"}`}
+          >
+            Filters{filtersActive && !filtersOpen ? " ·" : ""}
+          </button>
+        </div>
 
-        <FilterRow label="Type">
-          {TYPE_OPTIONS.map(([value, label]) => (
-            <Chip key={value} active={types.has(value)} onClick={() => setTypes(toggleIn(types, value))}>
-              {label}
-            </Chip>
-          ))}
-        </FilterRow>
+        {filtersOpen && (
+          <div className="mt-4 space-y-4">
+            <FilterRow label="Type">
+              {TYPE_OPTIONS.map(([value, label]) => (
+                <Chip key={value} active={types.has(value)} onClick={() => setTypes(toggleIn(types, value))}>
+                  {label}
+                </Chip>
+              ))}
+            </FilterRow>
 
-        <FilterRow label="Importance">
-          {IMPORTANCE_OPTIONS.map(([value, label]) => (
-            <Chip key={value} active={importances.has(value)} onClick={() => setImportances(toggleIn(importances, value))}>
-              {label}
-            </Chip>
-          ))}
-        </FilterRow>
+            <FilterRow label="Importance">
+              {IMPORTANCE_OPTIONS.map(([value, label]) => (
+                <Chip key={value} active={importances.has(value)} onClick={() => setImportances(toggleIn(importances, value))}>
+                  {label}
+                </Chip>
+              ))}
+            </FilterRow>
 
-        {isAllMcuPath && (
-          <FilterRow label="Universe">
-            <Chip active={universeFilter === "all"} onClick={() => setUniverseFilter("all")}>All</Chip>
-            <Chip active={universeFilter === "mcu"} onClick={() => setUniverseFilter("mcu")}>MCU</Chip>
-            <Chip active={universeFilter === "xmen"} onClick={() => setUniverseFilter("xmen")}>X-Men</Chip>
-          </FilterRow>
+            {isAllMcuPath && (
+              <FilterRow label="Universe">
+                <Chip active={universeFilter === "all"} onClick={() => setUniverseFilter("all")}>All</Chip>
+                <Chip active={universeFilter === "mcu"} onClick={() => setUniverseFilter("mcu")}>MCU</Chip>
+                <Chip active={universeFilter === "xmen"} onClick={() => setUniverseFilter("xmen")}>X-Men</Chip>
+              </FilterRow>
+            )}
+
+            <FilterRow label="Status">
+              {(["all", "unwatched", "watched", "skipped"] as const).map((value) => (
+                <Chip key={value} active={status === value} onClick={() => setStatus(value)}>
+                  {value === "all" ? "All" : value === "unwatched" ? "To watch" : value === "watched" ? "Watched" : "Skipped"}
+                </Chip>
+              ))}
+            </FilterRow>
+          </div>
         )}
-
-        <FilterRow label="Status">
-          {(["unwatched", "watched"] as const).map((value) => (
-            <Chip key={value} active={status === value} onClick={() => setStatus(value)}>
-              {value === "unwatched" ? "To watch" : "Watched"}
-            </Chip>
-          ))}
-        </FilterRow>
       </div>
 
       <div className="flex items-center justify-between text-sm text-muted">
@@ -138,7 +149,7 @@ export function TitleExplorer({ titles, initialOrder, orderBasePath }: Props) {
         {filtersActive && (
           <button
             type="button"
-            onClick={() => { setTypes(new Set()); setImportances(new Set()); setStatus("unwatched"); setQuery(""); }}
+            onClick={() => { setTypes(new Set()); setImportances(new Set()); setStatus("all"); setQuery(""); }}
             className="comic-btn rounded-lg bg-surface-2 px-3 py-1 text-xs text-muted hover:text-ink"
           >
             Clear filters
@@ -156,8 +167,9 @@ export function TitleExplorer({ titles, initialOrder, orderBasePath }: Props) {
               title={t}
               position={positions.get(t.id) ?? 0}
               watched={watchedIn(t.id)}
+              skipped={skipped.has(t.id)}
               onToggle={(value) => setWatched(activePathId, [t.id], value)}
-              onMarkThrough={() => markThrough(t.id)}
+              onSkip={() => setSkipped((prev) => { const next = new Set(prev); if (next.has(t.id)) next.delete(t.id); else next.add(t.id); return next; })}
             />
           ))}
         </ol>
@@ -246,63 +258,81 @@ function TitleRow({
   title: t,
   position,
   watched,
+  skipped,
   onToggle,
-  onMarkThrough,
+  onSkip,
 }: {
   title: Title;
   position: number;
   watched: boolean;
+  skipped: boolean;
   onToggle: (watched: boolean) => void;
-  onMarkThrough: () => void;
+  onSkip: () => void;
 }) {
+  const rowStyle = watched
+    ? { borderColor: "#1f8a4f", backgroundColor: "rgb(31 138 79 / 0.4)" }
+    : skipped
+      ? { borderColor: "#b91c1c", backgroundColor: "rgb(185 28 28 / 0.15)" }
+      : undefined;
+
   return (
     <li
       role="checkbox"
       aria-checked={watched}
       aria-label={`Mark ${t.title} as watched`}
       tabIndex={0}
-      onClick={() => onToggle(!watched)}
+      onClick={() => { if (!skipped) onToggle(!watched); }}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
-          onToggle(!watched);
+          if (!skipped) onToggle(!watched);
         }
       }}
       className={`group flex cursor-pointer items-stretch overflow-hidden comic-panel transition-colors ${
-        watched ? "" : "hover:border-muted/60"
+        !watched && !skipped ? "hover:border-muted/60" : ""
       }`}
-      style={watched ? { borderColor: "#1f8a4f", backgroundColor: "rgb(31 138 79 / 0.4)" } : undefined}
+      style={rowStyle}
     >
       <div className="relative shrink-0 self-stretch">
         <Poster title={t} />
+        {watched && (
+          <div className="pointer-events-none absolute inset-0 bg-emerald-500/50" />
+        )}
+        {skipped && (
+          <div className="pointer-events-none absolute inset-0 bg-red-600/40" />
+        )}
         <span className="absolute left-1 top-1 flex h-5 w-5 items-center justify-center rounded-full border-2 border-black bg-surface-2 font-mono text-[10px] tabular-nums text-muted shadow-[2px_2px_0_#000]">
           {position}
         </span>
       </div>
-      <div className="flex min-w-0 flex-1 flex-col justify-center py-2 pl-3 pr-2 sm:py-2.5 sm:pl-4 sm:pr-2.5">
-        <div className="min-w-0">
-          <span className={`block font-display text-base font-semibold leading-snug sm:text-lg ${watched ? "line-through decoration-muted" : ""}`}>
+      <div className="flex min-w-0 flex-1 items-center py-2 pl-3 pr-2 sm:py-2.5 sm:pl-4 sm:pr-2.5">
+        <div className="min-w-0 flex-1">
+          <span className={`block font-display text-base font-semibold leading-snug sm:text-lg ${watched || skipped ? "line-through decoration-muted" : ""}`}>
             {t.title}
           </span>
           <span className="mt-0.5 block text-xs text-muted sm:text-sm">
             {TYPE_LABEL[t.type]} · {releaseYear(t.release_date)} · {formatRuntime(t.runtime_minutes)}
             {t.universe === "non_marvel_studios" && " · Non-Marvel Studios"}
           </span>
-          <span className="mt-1.5 flex flex-wrap gap-1.5">
+          <span className="mt-1.5 flex flex-wrap gap-1.5 items-center">
             <ImportanceBadge importance={t.importance} />
             <DoomsdayBadge title={t} />
           </span>
         </div>
-        <button
-          type="button"
-          onClick={(e) => { e.stopPropagation(); onMarkThrough(); }}
-          title="Mark this and everything before it as watched"
-          aria-label={`Mark ${t.title} and everything before it as watched`}
-          className="mt-2 self-start shrink-0 rounded-md border border-line px-2 py-1 text-xs text-muted transition-colors hover:border-muted hover:text-ink sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100"
-        >
-          <span aria-hidden="true" className="sm:hidden">↑ All</span>
-          <span aria-hidden="true" className="hidden sm:inline">Watched through here</span>
-        </button>
+        {!watched && (
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onSkip(); }}
+            aria-label={skipped ? `Undo skip for ${t.title}` : `Skip ${t.title}`}
+            className={`ml-3 shrink-0 rounded border-2 border-black px-2.5 py-1 font-display text-xs font-black uppercase tracking-wide shadow-[2px_2px_0_#000] transition-colors ${
+              skipped
+                ? "bg-surface-2 text-muted hover:bg-surface-2/80"
+                : "bg-yellow-400 text-black hover:bg-yellow-300"
+            }`}
+          >
+            {skipped ? "UNDO" : "SKIP!"}
+          </button>
+        )}
       </div>
     </li>
   );

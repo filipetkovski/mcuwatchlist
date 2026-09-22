@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { guard } from "@/lib/session";
 import { admin } from "@/lib/supabase/admin";
 
-export async function POST() {
+export async function POST(req: Request) {
   const g = await guard();
   if (!g.ok) return g.response;
   if (g.session.role !== "admin") {
@@ -17,6 +17,9 @@ export async function POST() {
   const { error } = await db.from("invite_tokens").insert({ token, created_by: g.session.userId });
   if (error) return NextResponse.json({ error: "Couldn't generate invite." }, { status: 500 });
 
-  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000").replace(/\/$/, "");
-  return NextResponse.json({ url: `${siteUrl}/register?key=${token}` });
+  const reqUrl = new URL(req.url);
+  const origin = process.env.NEXT_PUBLIC_SITE_URL
+    ? process.env.NEXT_PUBLIC_SITE_URL.replace(/\/$/, "")
+    : reqUrl.origin;
+  return NextResponse.json({ url: `${origin}/register?key=${token}` });
 }
