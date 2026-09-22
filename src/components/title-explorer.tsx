@@ -110,8 +110,7 @@ export function TitleExplorer({ titles, initialOrder, orderBasePath }: Props) {
   return (
     <div className="space-y-6">
       <div className="space-y-2">
-        <p className="text-xs font-medium uppercase tracking-wide text-muted">Path</p>
-        <div className="flex flex-wrap gap-3" role="group" aria-label="Path">
+        <div className="grid grid-cols-1 gap-3 sm:flex sm:flex-wrap" role="group" aria-label="Path">
           {pathOptions.map((p) => {
             const doom = p.id === "prepare-for-doomsday";
             const ironMan = p.id === "new-to-marvel";
@@ -157,7 +156,6 @@ export function TitleExplorer({ titles, initialOrder, orderBasePath }: Props) {
             );
           })}
         </div>
-        <p className="text-xs text-muted">Each path keeps its own checked titles.</p>
       </div>
 
       <Dashboard titles={scoped} label={selected.name} pathId={activePathId} />
