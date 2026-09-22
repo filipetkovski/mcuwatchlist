@@ -41,7 +41,12 @@ export function Countdown() {
   ];
 
   return (
-    <div className="comic-panel w-full bg-accent p-3 sm:p-4" role="timer" aria-label="Countdown to Avengers: Doomsday">
+    <div
+      className="comic-panel w-full p-3 sm:p-4"
+      style={{ background: "linear-gradient(160deg, #1f8a4f 0%, #0f5a33 55%, #08301c 100%)" }}
+      role="timer"
+      aria-label="Countdown to Avengers: Doomsday"
+    >
       <div className="flex items-center gap-3 sm:gap-4">
         <svg
           viewBox="0 0 24 24"
@@ -57,13 +62,10 @@ export function Countdown() {
           />
         </svg>
         {released ? (
-          <p className="font-display text-2xl text-white sm:text-4xl">In theaters now!</p>
+          <p className="min-w-0 font-display text-2xl text-white sm:text-4xl">In theaters now!</p>
         ) : (
-          <p className="font-display text-xl text-white sm:text-2xl">Counting down to Doomsday</p>
+          <p className="min-w-0 font-display text-lg text-white sm:text-2xl">Counting down to Doomsday</p>
         )}
-        <p className="text-center text-xs font-semibold uppercase tracking-wide text-white/90">
-        Avengers: Doomsday · Dec 18, 2026
-      </p>
       </div>
 
       {!released && (

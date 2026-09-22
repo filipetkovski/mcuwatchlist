@@ -22,6 +22,11 @@
   color-scheme: dark;
 }
 
+html,
+body {
+  overflow-x: hidden;
+}
+
 body {
   background:
     radial-gradient(circle at 1.5px 1.5px, rgb(77 155 255 / 0.22) 1.5px, transparent 1.8px) 0 0 / 14px 14px,

@@ -12,8 +12,9 @@ export default async function HomePage() {
   const mcu = titles.filter(PATHS[0].include);
 
   return (
-    <div className="space-y-12">
-      <section className="space-y-5 pt-4 sm:pt-10">
+    <div className="space-y-12 pt-4 sm:pt-10">
+      <Countdown />
+      <section className="space-y-5">
         <h1 className="max-w-3xl font-display text-4xl font-bold leading-tight tracking-tight sm:text-6xl">
           Get caught up before <span className="text-[#1f8a4f]">Doomsday</span>.
         </h1>
@@ -29,7 +30,6 @@ export default async function HomePage() {
         </h2>
         <PathCards titles={titles} />
       </section>
-      <Countdown />
     </div>
   );
 }

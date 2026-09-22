@@ -167,16 +167,15 @@ export function TitleExplorer({ titles, initialOrder, orderBasePath }: Props) {
         <OrderToggle order={order} onChange={setOrder} basePath={orderBasePath} pathId={activePathId} />
       </div>
 
-      <input
-        type="search"
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        placeholder="Search titles"
-        aria-label="Search titles"
-        className="w-full rounded-lg border-2 border-black bg-surface-2 px-3 py-2 text-sm placeholder:text-muted"
-      />
-
       <div className="space-y-3 comic-panel p-4">
+        <input
+          type="search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search titles"
+          aria-label="Search titles"
+          className="w-full rounded-lg border-2 border-black bg-surface-2 px-3 py-2 text-sm placeholder:text-muted"
+        />
         <FilterRow label="Type">
           {TYPE_OPTIONS.map(([value, label]) => (
             <Chip key={value} active={types.has(value)} onClick={() => setTypes(toggleIn(types, value))}>
@@ -265,19 +264,34 @@ function OrderToggle({
     ["story", "Story order"],
     ["release", "Release order"],
   ];
-  const base = "rounded-md px-4 py-1.5 text-sm font-medium transition-colors";
-  const on = "bg-accent text-white shadow-[2px_2px_0_#000]";
-  const off = "text-muted hover:text-ink";
+  const base =
+    "relative rounded-xl border-2 border-black px-4 py-3 text-left font-display text-sm font-semibold transition-transform hover:-translate-y-0.5 sm:text-base";
+  const on: Record<OrderType, string> = {
+    story: "bg-accent text-white shadow-[3px_3px_0_#000]",
+    release: "bg-violet text-white shadow-[3px_3px_0_#000]",
+  };
+  const off = "bg-gradient-to-b from-surface-2 to-surface text-muted opacity-70 shadow-none hover:text-ink";
   const query = pathId === DEFAULT_PATH ? "" : `?path=${pathId}`;
   return (
-    <div role="group" aria-label="Watch order" className="inline-flex rounded-lg border-2 border-black bg-surface-2 p-1">
+    <div role="group" aria-label="Watch order" className="flex flex-wrap gap-3">
       {options.map(([value, label]) =>
         basePath ? (
-          <Link key={value} href={`${basePath}/${value}${query}`} aria-current={order === value ? "page" : undefined} className={`${base} ${order === value ? on : off}`}>
+          <Link
+            key={value}
+            href={`${basePath}/${value}${query}`}
+            aria-current={order === value ? "page" : undefined}
+            className={`${base} ${order === value ? on[value] : off}`}
+          >
             {label}
           </Link>
         ) : (
-          <button key={value} type="button" aria-pressed={order === value} onClick={() => onChange(value)} className={`${base} ${order === value ? on : off}`}>
+          <button
+            key={value}
+            type="button"
+            aria-pressed={order === value}
+            onClick={() => onChange(value)}
+            className={`${base} ${order === value ? on[value] : off}`}
+          >
             {label}
           </button>
         ),
@@ -407,7 +421,7 @@ function Poster({ title }: { title: Title }) {
         src={title.poster_url}
         alt=""
         loading="lazy"
-        className="h-full w-14 shrink-0 border-r-2 border-black object-cover sm:w-20"
+        className="h-full w-30 shrink-0 border-r-2 border-black object-cover sm:w-20"
       />
     );
   }
@@ -422,7 +436,7 @@ function Poster({ title }: { title: Title }) {
   return (
     <div
       aria-hidden="true"
-      className="flex h-full w-14 shrink-0 items-center justify-center border-r-2 border-black bg-gradient-to-br from-surface-2 to-line font-display text-xs font-bold text-muted sm:w-20 sm:text-base"
+      className="flex h-full w-20 shrink-0 items-center justify-center border-r-2 border-black bg-gradient-to-br from-surface-2 to-line font-display text-xs font-bold text-muted sm:w-25 sm:text-base"
     >
       {initials || "M"}
     </div>

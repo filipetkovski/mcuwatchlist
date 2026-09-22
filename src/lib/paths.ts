@@ -36,7 +36,7 @@ export const PATHS: PathDef[] = [
   {
     id: "rewatch-essentials",
     slug: "rewatch-essentials",
-    name: "Rewatch the Essentials",
+    name: "The Essentials",
     tagline: "The best-of reel for returning fans.",
     description:
       "A curated highlight run of the core saga: the titles that carry the biggest character and story beats.",

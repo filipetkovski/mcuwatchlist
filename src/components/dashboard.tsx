@@ -41,18 +41,12 @@ export function Dashboard({ titles, label, pathId }: { titles: Title[]; label: s
   ];
 
   return (
-    <section aria-label="Progress dashboard" className="comic-panel p-4 sm:p-5">
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="font-display text-lg font-semibold">
-          Your progress <span className="font-sans text-sm font-normal text-muted">· {label}</span>
-        </h2>
-        <span className="text-xs text-muted">{dataReady ? "Saved to your account" : "Loading…"}</span>
-      </div>
-      <dl className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-5">
+    <section aria-label="Progress dashboard">
+      <dl className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-5">
         {tiles.map(([name, value]) => (
-          <div key={name} className="rounded-xl bg-surface-2 px-3 py-2.5">
-            <dt className="text-xs text-muted">{name}</dt>
-            <dd className="font-display text-2xl font-semibold tabular-nums">{value}</dd>
+          <div key={name} className="rounded-xl bg-surface px-4 py-4">
+            <dt className="text-sm text-muted">{name}</dt>
+            <dd className="font-display text-3xl font-semibold tabular-nums sm:text-4xl">{value}</dd>
           </div>
         ))}
       </dl>
