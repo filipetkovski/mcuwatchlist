@@ -2,12 +2,11 @@ import { NextResponse, type NextRequest } from "next/server";
 import { verifyPassword } from "@/lib/password";
 import { clearSessionCookie, createSessionToken, currentSession, withSessionCookie } from "@/lib/session";
 import { admin } from "@/lib/supabase/admin";
+import type { PathId, UserRole } from "@/lib/types";
 
-// Best-effort brute-force throttle (per server instance): 5 misses per IP per 15 minutes.
 const MAX_MISSES = 5;
 const WINDOW_MS = 15 * 60 * 1000;
 const misses = new Map<string, { count: number; resetAt: number }>();
-
 const clientKey = (req: NextRequest) => req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "local";
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -15,7 +14,16 @@ export async function GET() {
   const configured = Boolean(admin() && process.env.SESSION_SECRET);
   if (!configured) return NextResponse.json({ configured: false, authenticated: false });
   const session = await currentSession();
-  return NextResponse.json({ configured: true, authenticated: Boolean(session), expiresAt: session?.expiresAt ?? null });
+  if (!session) return NextResponse.json({ configured: true, authenticated: false });
+  return NextResponse.json({
+    configured: true,
+    authenticated: true,
+    userId: session.userId,
+    username: session.username,
+    role: session.role,
+    pathId: session.pathId,
+    expiresAt: session.expiresAt,
+  });
 }
 
 export async function POST(req: NextRequest) {
@@ -30,25 +38,43 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Too many wrong tries. Wait a few minutes and try again." }, { status: 429 });
   }
 
-  const body = (await req.json().catch(() => null)) as { password?: unknown } | null;
+  const body = (await req.json().catch(() => null)) as { username?: unknown; password?: unknown } | null;
+  const username = typeof body?.username === "string" ? body.username.trim() : "";
   const password = typeof body?.password === "string" ? body.password : "";
-  if (!password || password.length > 200) return NextResponse.json({ error: "Enter the password." }, { status: 400 });
+  if (!username || !password || username.length > 50 || password.length > 200) {
+    return NextResponse.json({ error: "Enter your username and password." }, { status: 400 });
+  }
 
-  const { data, error } = await db.from("site_password").select("password_hash").eq("id", true).maybeSingle();
-  if (error) return NextResponse.json({ error: "Couldn't check the password. Is the database set up?" }, { status: 503 });
-  if (!data) return NextResponse.json({ error: "No password has been set yet. Run npm run db:setup." }, { status: 503 });
+  const { data, error } = await db
+    .from("users")
+    .select("id, username, password_hash, role, path_id")
+    .eq("username", username)
+    .maybeSingle();
+  if (error) return NextResponse.json({ error: "Couldn't check credentials. Is the database set up?" }, { status: 503 });
 
-  if (!verifyPassword(password, data.password_hash)) {
+  const recordMiss = () => {
     const now = Date.now();
-    const current = entry && entry.resetAt > now ? entry : { count: 0, resetAt: now + WINDOW_MS };
-    misses.set(key, { count: current.count + 1, resetAt: current.resetAt });
+    const cur = entry && entry.resetAt > now ? entry : { count: 0, resetAt: now + WINDOW_MS };
+    misses.set(key, { count: cur.count + 1, resetAt: cur.resetAt });
+  };
+
+  if (!data || !verifyPassword(password, data.password_hash)) {
+    recordMiss();
     await sleep(400);
-    return NextResponse.json({ error: "That's not the password." }, { status: 401 });
+    return NextResponse.json({ error: "Invalid username or password." }, { status: 401 });
   }
 
   misses.delete(key);
-  const { token, expiresAt } = createSessionToken();
-  return withSessionCookie(NextResponse.json({ ok: true, expiresAt }), token);
+  const { token, expiresAt } = createSessionToken(
+    data.id,
+    data.username,
+    data.role as UserRole,
+    (data.path_id as PathId) ?? null,
+  );
+  return withSessionCookie(
+    NextResponse.json({ ok: true, userId: data.id, username: data.username, role: data.role, pathId: data.path_id ?? null, expiresAt }),
+    token,
+  );
 }
 
 export async function DELETE() {

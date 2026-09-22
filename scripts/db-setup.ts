@@ -1,7 +1,6 @@
-// Usage: npm run db:setup [-- --reset-password]
-// Creates the tables (supabase/migrations/*.sql, each applied once), loads the title catalog, and sets the
-// shared site password from SITE_PASSWORD. Talks to Supabase through the Management API, so it only needs
-// a personal access token (Supabase dashboard -> Account -> Access Tokens) and the project URL.
+// Usage: npm run db:setup [-- --reset-admin]
+// Creates the tables (supabase/migrations/*.sql, each applied once), loads the title catalog, and
+// creates the default admin user. Talks to Supabase through the Management API.
 import { readdirSync, readFileSync } from "node:fs";
 import { hashPassword } from "../src/lib/password.ts";
 
@@ -14,8 +13,11 @@ try {
 
 const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const token = process.env.SUPABASE_ACCESS_TOKEN || "";
-const sitePassword = process.env.SITE_PASSWORD || "";
-const resetPassword = process.argv.includes("--reset-password");
+const resetAdmin = process.argv.includes("--reset-admin");
+
+// Default admin credentials (override with ADMIN_USERNAME / ADMIN_PASSWORD in .env.local).
+const adminUsername = process.env.ADMIN_USERNAME || "filip";
+const adminPassword = process.env.ADMIN_PASSWORD || "milicka24";
 
 function fail(message: string): never {
   console.error(`\n${message}\n`);
@@ -24,7 +26,7 @@ function fail(message: string): never {
 
 if (!url) fail("SUPABASE_URL is empty in .env.local (e.g. https://abcdefgh.supabase.co).");
 if (!token) fail("SUPABASE_ACCESS_TOKEN is empty in .env.local (a personal access token starting with sbp_).");
-const ref = new URL(url).hostname.split(".")[0]; // hostname only, so extra path text in the URL is harmless
+const ref = new URL(url).hostname.split(".")[0];
 
 async function sql<T = unknown>(query: string): Promise<T> {
   const res = await fetch(`https://api.supabase.com/v1/projects/${ref}/database/query`, {
@@ -58,20 +60,22 @@ await sql(readFileSync("supabase/seed.sql", "utf8"));
 const [{ count }] = await sql<Array<{ count: number }>>(`select count(*)::int as count from public.titles`);
 console.log(`  seed   ${count} titles`);
 
-const [{ has_password }] = await sql<Array<{ has_password: boolean }>>(
-  `select exists (select 1 from public.site_password) as has_password`,
+// Create or update the admin user.
+const [{ has_admin }] = await sql<Array<{ has_admin: boolean }>>(
+  `select exists (select 1 from public.users where username = ${literal(adminUsername)}) as has_admin`,
 );
-if (sitePassword && (!has_password || resetPassword)) {
+
+if (!has_admin || resetAdmin) {
+  const hash = literal(hashPassword(adminPassword));
   await sql(
-    `insert into public.site_password (id, password_hash) values (true, ${literal(hashPassword(sitePassword))})
-     on conflict (id) do update set password_hash = excluded.password_hash`,
+    `insert into public.users (username, password_hash, role)
+     values (${literal(adminUsername)}, ${hash}, 'admin')
+     on conflict (username) do update set password_hash = excluded.password_hash, role = 'admin'`,
   );
-  console.log(`  ${has_password ? "reset" : "set  "}  site password (stored as a scrypt hash)`);
-  console.log("  Tip: you can now blank SITE_PASSWORD in .env.local so the plain text isn't kept around.");
-} else if (!has_password) {
-  fail("No site password is set yet. Put one in SITE_PASSWORD in .env.local and run this again.");
+  console.log(`  ${has_admin ? "reset" : "create"} admin user: ${adminUsername}`);
+  if (has_admin) console.log("  Tip: you can now blank ADMIN_PASSWORD in .env.local.");
 } else {
-  console.log("  keep   existing site password (use --reset-password with SITE_PASSWORD to change it)");
+  console.log(`  keep   existing admin user: ${adminUsername} (use --reset-admin to change password)`);
 }
 
 console.log("\nDone. Start the app with: npm run dev");

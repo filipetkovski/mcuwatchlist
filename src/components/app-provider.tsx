@@ -1,15 +1,23 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import type { GeneratedSchedule, SavedSchedule, WatchedMap } from "@/lib/types";
+import type { GeneratedSchedule, PathId, SavedSchedule, UserRole, WatchedMap } from "@/lib/types";
 
-type Status = "checking" | "locked" | "unlocked" | "unconfigured";
+type Status = "checking" | "locked" | "path-pending" | "unlocked" | "unconfigured";
+
+interface User {
+  id: string;
+  username: string;
+  role: UserRole;
+  pathId: PathId | null;
+}
 
 interface AppContextValue {
   status: Status;
-  unlock: (password: string) => Promise<string | null>;
+  user: User | null;
+  login: (username: string, password: string) => Promise<string | null>;
+  selectPath: (pathId: PathId) => Promise<string | null>;
   lock: () => Promise<void>;
-  /** Progress and schedules have loaded from the server. */
   dataReady: boolean;
   isWatched: (pathId: string, titleId: string) => boolean;
   watchedFor: (pathId: string) => WatchedMap;
@@ -36,6 +44,7 @@ class LockedError extends Error {}
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [status, setStatus] = useState<Status>("checking");
+  const [user, setUser] = useState<User | null>(null);
   const [expiresAt, setExpiresAt] = useState<number | null>(null);
   const [progress, setProgress] = useState<Record<string, WatchedMap>>({});
   const [schedules, setSchedules] = useState<SavedSchedule[]>([]);
@@ -44,6 +53,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const relock = useCallback(() => {
     setStatus("locked");
+    setUser(null);
     setExpiresAt(null);
     setProgress({});
     setSchedules([]);
@@ -70,12 +80,25 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const checkSession = useCallback(async () => {
     try {
       const res = await fetch("/api/session");
-      const data = (await res.json()) as { configured: boolean; authenticated: boolean; expiresAt: number | null };
-      if (!data.configured) setStatus("unconfigured");
-      else if (data.authenticated) {
-        setStatus("unlocked");
-        setExpiresAt(data.expiresAt);
-      } else relock();
+      const data = (await res.json()) as {
+        configured: boolean;
+        authenticated: boolean;
+        userId?: string;
+        username?: string;
+        role?: UserRole;
+        pathId?: PathId | null;
+        expiresAt?: number | null;
+      };
+      if (!data.configured) {
+        setStatus("unconfigured");
+      } else if (data.authenticated && data.userId && data.username && data.role) {
+        const u: User = { id: data.userId, username: data.username, role: data.role, pathId: data.pathId ?? null };
+        setUser(u);
+        setExpiresAt(data.expiresAt ?? null);
+        setStatus(u.pathId ? "unlocked" : "path-pending");
+      } else {
+        relock();
+      }
     } catch {
       setStatus("unconfigured");
     }
@@ -106,14 +129,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return () => window.clearTimeout(id);
   }, [status, loadData]);
 
-  // Lock the moment the 1-hour session ends, and re-check when the tab comes back into view.
   useEffect(() => {
-    if (status !== "unlocked" || expiresAt === null) return;
+    if ((status !== "unlocked" && status !== "path-pending") || expiresAt === null) return;
     const timer = window.setTimeout(relock, Math.max(expiresAt - Date.now(), 0));
     const onVisible = () => {
       if (document.visibilityState !== "visible") return;
       if (Date.now() >= expiresAt) relock();
-      else void loadData();
+      else if (status === "unlocked") void loadData();
     };
     document.addEventListener("visibilitychange", onVisible);
     return () => {
@@ -122,15 +144,43 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     };
   }, [status, expiresAt, relock, loadData]);
 
-  const unlock = useCallback(async (password: string): Promise<string | null> => {
+  const login = useCallback(async (username: string, password: string): Promise<string | null> => {
     try {
       const res = await fetch("/api/session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password }),
+        body: JSON.stringify({ username, password }),
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        userId?: string;
+        username?: string;
+        role?: UserRole;
+        pathId?: PathId | null;
+        expiresAt?: number;
+      };
+      if (!res.ok) return data.error ?? "Couldn't log in.";
+      if (!data.userId || !data.username || !data.role) return "Unexpected server response.";
+      const u: User = { id: data.userId, username: data.username, role: data.role, pathId: data.pathId ?? null };
+      setUser(u);
+      setExpiresAt(data.expiresAt ?? null);
+      setStatus(u.pathId ? "unlocked" : "path-pending");
+      return null;
+    } catch {
+      return "Couldn't reach the server.";
+    }
+  }, []);
+
+  const selectPath = useCallback(async (pathId: PathId): Promise<string | null> => {
+    try {
+      const res = await fetch("/api/session/path", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pathId }),
       });
       const data = (await res.json().catch(() => ({}))) as { error?: string; expiresAt?: number };
-      if (!res.ok) return data.error ?? "Couldn't unlock.";
+      if (!res.ok) return data.error ?? "Couldn't save path.";
+      setUser((u) => u ? { ...u, pathId } : u);
       setExpiresAt(data.expiresAt ?? null);
       setStatus("unlocked");
       return null;
@@ -172,7 +222,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           method: "POST",
           body: JSON.stringify({ name, schedule }),
         });
-        setSchedules((cur) => [...cur, created]);
+        setSchedules([created]);
         return created;
       } catch (e) {
         if (!(e instanceof LockedError)) setError(e instanceof Error ? e.message : "Couldn't save the schedule.");
@@ -200,7 +250,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     async (id: string) => {
       try {
         await api(`/api/schedules/${id}`, { method: "DELETE" });
-        setSchedules((cur) => cur.filter((s) => s.id !== id));
+        setSchedules([]);
         setProgress((cur) => {
           const rest = { ...cur };
           delete rest[id];
@@ -218,7 +268,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const value = useMemo<AppContextValue>(
     () => ({
       status,
-      unlock,
+      user,
+      login,
+      selectPath,
       lock,
       dataReady,
       isWatched: (pathId, titleId) => titleId in (progress[pathId] ?? NO_PROGRESS),
@@ -231,7 +283,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       error,
       clearError: () => setError(null),
     }),
-    [status, unlock, lock, dataReady, progress, setWatched, schedules, saveSchedule, updateSchedule, deleteSchedule, error],
+    [status, user, login, selectPath, lock, dataReady, progress, setWatched, schedules, saveSchedule, updateSchedule, deleteSchedule, error],
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

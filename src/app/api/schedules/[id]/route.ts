@@ -8,10 +8,9 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 type Ctx = { params: Promise<{ id: string }> };
 
-/** Body: { name?, schedule? } */
 export async function PATCH(req: NextRequest, ctx: Ctx) {
-  const denied = await guard();
-  if (denied) return denied;
+  const g = await guard();
+  if (!g.ok) return g.response;
   const db = admin();
   if (!db) return NextResponse.json({ error: "Database not configured." }, { status: 503 });
 
@@ -33,22 +32,28 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
   }
   if (Object.keys(update).length === 0) return NextResponse.json({ error: "Nothing to update." }, { status: 400 });
 
-  const { data, error } = await db.from("schedules").update(update).eq("id", id).select("id").maybeSingle();
+  const { data, error } = await db
+    .from("schedules")
+    .update(update)
+    .eq("id", id)
+    .eq("user_id", g.session.userId)
+    .select("id")
+    .maybeSingle();
   if (error) return NextResponse.json({ error: "Couldn't update the schedule." }, { status: 500 });
   if (!data) return NextResponse.json({ error: "Not found." }, { status: 404 });
   return NextResponse.json({ ok: true });
 }
 
 export async function DELETE(_req: NextRequest, ctx: Ctx) {
-  const denied = await guard();
-  if (denied) return denied;
+  const g = await guard();
+  if (!g.ok) return g.response;
   const db = admin();
   if (!db) return NextResponse.json({ error: "Database not configured." }, { status: 503 });
 
   const { id } = await ctx.params;
   if (!UUID.test(id)) return NextResponse.json({ error: "Invalid id." }, { status: 400 });
 
-  const { error } = await db.from("schedules").delete().eq("id", id);
+  const { error } = await db.from("schedules").delete().eq("id", id).eq("user_id", g.session.userId);
   if (error) return NextResponse.json({ error: "Couldn't delete the schedule." }, { status: 500 });
   return NextResponse.json({ ok: true });
 }

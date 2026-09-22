@@ -1,29 +1,23 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useSyncExternalStore } from "react";
+import { useState } from "react";
 import { formatRuntime, releaseYear } from "@/lib/format";
 import { PATHS } from "@/lib/paths";
-import { PATH_QUERY_EVENT } from "@/lib/path-event";
 import { isXMenTitle, sortTitles } from "@/lib/titles";
-import type { Importance, OrderType, Title, TitleType } from "@/lib/types";
+import type { Importance, OrderType, PathId, Title, TitleType } from "@/lib/types";
 import { useApp } from "./app-provider";
 import { DoomsdayBadge, ImportanceBadge } from "./badges";
 import { Dashboard } from "./dashboard";
-import { AvengersMask } from "./avengers-mask";
-import { DoomMask } from "./doom-mask";
-import { IronManMask } from "./iron-man-mask";
 import { ProgressNotices } from "./progress-notices";
 
 interface Props {
-  /** The whole catalog; the selected path narrows it down. */
   titles: Title[];
   initialOrder: OrderType;
-  /** When set, the order toggle links to `${orderBasePath}/story|release` instead of switching in place. */
   orderBasePath?: string;
 }
 
-const DEFAULT_PATH = "new-to-marvel";
+const DEFAULT_PATH: PathId = "new-to-marvel";
 
 const TYPE_OPTIONS: Array<[TitleType, string]> = [
   ["movie", "Movies"],
@@ -37,19 +31,6 @@ const IMPORTANCE_OPTIONS: Array<[Importance, string]> = [
   ["unconfirmed", "Unconfirmed"],
 ];
 
-// The selected path lives in the URL (?path=...). Read it as an external store so the statically
-// generated page still server-renders the full list (useSearchParams would defer it to the client).
-const subscribePath = (cb: () => void) => {
-  window.addEventListener("popstate", cb);
-  window.addEventListener(PATH_QUERY_EVENT, cb);
-  return () => {
-    window.removeEventListener("popstate", cb);
-    window.removeEventListener(PATH_QUERY_EVENT, cb);
-  };
-};
-const getPathParam = () => new URLSearchParams(window.location.search).get("path");
-const getServerPathParam = () => null;
-
 function toggleIn<T>(set: Set<T>, value: T): Set<T> {
   const next = new Set(set);
   if (next.has(value)) next.delete(value);
@@ -58,35 +39,17 @@ function toggleIn<T>(set: Set<T>, value: T): Set<T> {
 }
 
 export function TitleExplorer({ titles, initialOrder, orderBasePath }: Props) {
-  const { isWatched, setWatched, schedules } = useApp();
+  const { isWatched, setWatched, user } = useApp();
   const [order, setOrder] = useState<OrderType>(initialOrder);
-  const pathId = useSyncExternalStore(subscribePath, getPathParam, getServerPathParam) ?? DEFAULT_PATH;
   const [types, setTypes] = useState<Set<TitleType>>(new Set());
   const [importances, setImportances] = useState<Set<Importance>>(new Set());
   const [universeFilter, setUniverseFilter] = useState<"all" | "mcu" | "xmen">("all");
   const [status, setStatus] = useState<"unwatched" | "watched">("unwatched");
   const [query, setQuery] = useState("");
 
-  const pathOptions = [
-    ...PATHS.map((p) => ({ id: p.id as string, name: p.name, include: p.include, saved: false })),
-    ...schedules.map((s) => ({
-      id: s.id,
-      name: s.name,
-      include: (t: Title) => s.schedule.titleIds.includes(t.id),
-      saved: true,
-    })),
-  ];
-  const selected = pathOptions.find((p) => p.id === pathId) ?? pathOptions[0];
-  const activePathId = selected.id;
+  const activePathId: string = user?.pathId ?? DEFAULT_PATH;
+  const pathDef = PATHS.find((p) => p.id === activePathId);
   const isAllMcuPath = activePathId === DEFAULT_PATH;
-
-  const choosePath = (id: string) => {
-    const url = new URL(window.location.href);
-    if (id === DEFAULT_PATH) url.searchParams.delete("path");
-    else url.searchParams.set("path", id);
-    window.history.replaceState(null, "", url);
-    window.dispatchEvent(new Event(PATH_QUERY_EVENT));
-  };
 
   const scoped = sortTitles(
     isAllMcuPath
@@ -95,7 +58,9 @@ export function TitleExplorer({ titles, initialOrder, orderBasePath }: Props) {
         : universeFilter === "mcu"
           ? titles.filter((t) => t.universe === "mcu")
           : titles.filter(isXMenTitle)
-      : titles.filter(selected.include),
+      : pathDef
+        ? titles.filter(pathDef.include)
+        : titles,
     order,
   );
   const positions = new Map(scoped.map((t, i) => [t.id, i + 1]));
@@ -118,59 +83,11 @@ export function TitleExplorer({ titles, initialOrder, orderBasePath }: Props) {
 
   return (
     <div className="space-y-6">
-      <div className="space-y-2">
-        <div className="grid grid-cols-3 gap-4" role="group" aria-label="Path">
-          {pathOptions.map((p) => {
-            const doom = p.id === "prepare-for-doomsday";
-            const ironMan = p.id === "new-to-marvel";
-            const avengers = p.id === "rewatch-essentials";
-            const active = p.id === activePathId;
-            const activeBg = doom
-              ? "linear-gradient(160deg, #1f8a4f 0%, #0f5a33 55%, #08301c 100%)"
-              : ironMan
-                ? "linear-gradient(160deg, #d22030 0%, #8f0d1a 55%, #4a0710 100%)"
-                : avengers
-                  ? "linear-gradient(160deg, #7cc3ff 0%, #2e6fd9 55%, #123a73 100%)"
-                  : "var(--color-accent)";
-            return (
-              <button
-                key={p.id}
-                type="button"
-                aria-pressed={active}
-                onClick={() => choosePath(p.id)}
-                className={`relative flex min-h-24 items-center gap-2 overflow-hidden rounded-xl border-2 border-black px-5 py-5 text-left transition-transform hover:-translate-y-0.5 focus-visible:outline-none sm:min-h-28 sm:px-6 sm:py-6 ${
-                  active ? "text-white" : "bg-surface-2 text-muted hover:text-ink"
-                }`}
-                style={active ? { background: activeBg } : undefined}
-              >
-                {doom && (
-                  <DoomMask className="pointer-events-none absolute -bottom-5 -right-4 h-20 w-auto select-none opacity-70 sm:h-24" />
-                )}
-                {ironMan && (
-                  <IronManMask className="pointer-events-none absolute -bottom-5 -right-4 h-20 w-auto select-none opacity-70 sm:h-24" />
-                )}
-                {avengers && (
-                  <AvengersMask className="pointer-events-none absolute -bottom-5 -right-4 h-16 w-auto select-none opacity-70 sm:h-20" />
-                )}
-                <span
-                  className={`relative font-display text-base font-semibold sm:text-lg ${
-                    active && doom ? "text-[#b8f7cd]" : active && ironMan ? "text-[#ffcf6b]" : active && avengers ? "text-[#cfe8ff]" : ""
-                  }`}
-                >
-                  {p.saved && <span aria-hidden="true">★ </span>}
-                  {p.name}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      <Dashboard titles={scoped} label={selected.name} pathId={activePathId} />
+      <Dashboard titles={scoped} label={pathDef?.name ?? "All titles"} pathId={activePathId} />
       <ProgressNotices />
 
       <div className="flex flex-wrap items-center gap-3">
-        <OrderToggle order={order} onChange={setOrder} basePath={orderBasePath} pathId={activePathId} />
+        <OrderToggle order={order} onChange={setOrder} basePath={orderBasePath} />
       </div>
 
       <div className="space-y-3 comic-panel p-4">
@@ -198,15 +115,9 @@ export function TitleExplorer({ titles, initialOrder, orderBasePath }: Props) {
         </FilterRow>
         {isAllMcuPath && (
           <FilterRow label="Universe">
-            <Chip active={universeFilter === "all"} onClick={() => setUniverseFilter("all")}>
-              All
-            </Chip>
-            <Chip active={universeFilter === "mcu"} onClick={() => setUniverseFilter("mcu")}>
-              MCU
-            </Chip>
-            <Chip active={universeFilter === "xmen"} onClick={() => setUniverseFilter("xmen")}>
-              X-Men
-            </Chip>
+            <Chip active={universeFilter === "all"} onClick={() => setUniverseFilter("all")}>All</Chip>
+            <Chip active={universeFilter === "mcu"} onClick={() => setUniverseFilter("mcu")}>MCU</Chip>
+            <Chip active={universeFilter === "xmen"} onClick={() => setUniverseFilter("xmen")}>X-Men</Chip>
           </FilterRow>
         )}
         <FilterRow label="Status">
@@ -219,9 +130,7 @@ export function TitleExplorer({ titles, initialOrder, orderBasePath }: Props) {
       </div>
 
       <div className="flex items-center justify-between text-sm text-muted">
-        <span>
-          Showing {visible.length} of {scoped.length}
-        </span>
+        <span>Showing {visible.length} of {scoped.length}</span>
         {filtersActive && (
           <button
             type="button"
@@ -262,12 +171,10 @@ function OrderToggle({
   order,
   onChange,
   basePath,
-  pathId,
 }: {
   order: OrderType;
   onChange: (o: OrderType) => void;
   basePath?: string;
-  pathId: string;
 }) {
   const options: Array<[OrderType, string]> = [
     ["story", "Story order"],
@@ -280,14 +187,13 @@ function OrderToggle({
     release: "bg-violet text-white shadow-[3px_3px_0_#000]",
   };
   const off = "bg-gradient-to-b from-surface-2 to-surface text-muted opacity-70 shadow-none hover:text-ink";
-  const query = pathId === DEFAULT_PATH ? "" : `?path=${pathId}`;
   return (
     <div role="group" aria-label="Watch order" className="flex flex-wrap gap-3">
       {options.map(([value, label]) =>
         basePath ? (
           <Link
             key={value}
-            href={`${basePath}/${value}${query}`}
+            href={`${basePath}/${value}`}
             aria-current={order === value ? "page" : undefined}
             className={`${base} ${order === value ? on[value] : off}`}
           >
@@ -318,17 +224,7 @@ function FilterRow({ label, children }: { label: string; children: React.ReactNo
   );
 }
 
-function Chip({
-  active,
-  onClick,
-  children,
-  tone = "default",
-}: {
-  active: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-  tone?: "default" | "doom";
-}) {
+function Chip({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
     <button
       type="button"
@@ -336,10 +232,8 @@ function Chip({
       onClick={onClick}
       className={`rounded-full border px-3 py-1 text-sm transition-colors ${
         active
-          ? `border-black text-white shadow-[2px_2px_0_#000] ${tone === "doom" ? "bg-[#1f8a4f]" : "bg-accent"}`
-          : tone === "doom"
-            ? "border-[#1f8a4f] text-[#8fe3ad] hover:text-white"
-            : "border-line text-muted hover:border-muted hover:text-ink"
+          ? "border-black bg-accent text-white shadow-[2px_2px_0_#000]"
+          : "border-line text-muted hover:border-muted hover:text-ink"
       }`}
     >
       {children}
@@ -402,20 +296,13 @@ function TitleRow({
         </div>
         <button
           type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onMarkThrough();
-          }}
+          onClick={(e) => { e.stopPropagation(); onMarkThrough(); }}
           title="Mark this and everything before it as watched"
           aria-label={`Mark ${t.title} and everything before it as watched`}
           className="mt-2 self-start shrink-0 rounded-md border border-line px-2 py-1 text-xs text-muted transition-colors hover:border-muted hover:text-ink sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100"
         >
-          <span aria-hidden="true" className="sm:hidden">
-            ↑ All
-          </span>
-          <span aria-hidden="true" className="hidden sm:inline">
-            Watched through here
-          </span>
+          <span aria-hidden="true" className="sm:hidden">↑ All</span>
+          <span aria-hidden="true" className="hidden sm:inline">Watched through here</span>
         </button>
       </div>
     </li>

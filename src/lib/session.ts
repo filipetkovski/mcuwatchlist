@@ -2,6 +2,7 @@ import "server-only";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import type { PathId, UserRole, UserSession } from "@/lib/types";
 
 export const SESSION_COOKIE = "mcuw_session";
 export const SESSION_TTL_SECONDS = 60 * 60;
@@ -14,13 +15,19 @@ function secret(): string {
 
 const sign = (payload: string) => createHmac("sha256", secret()).update(payload).digest("base64url");
 
-export function createSessionToken(now = Date.now()): { token: string; expiresAt: number } {
+export function createSessionToken(
+  userId: string,
+  username: string,
+  role: UserRole,
+  pathId: PathId | null,
+  now = Date.now(),
+): { token: string; expiresAt: number } {
   const expiresAt = now + SESSION_TTL_SECONDS * 1000;
-  const payload = Buffer.from(JSON.stringify({ exp: expiresAt })).toString("base64url");
+  const payload = Buffer.from(JSON.stringify({ exp: expiresAt, userId, username, role, pathId })).toString("base64url");
   return { token: `${payload}.${sign(payload)}`, expiresAt };
 }
 
-export function readSessionToken(token: string | undefined | null, now = Date.now()): { expiresAt: number } | null {
+export function readSessionToken(token: string | undefined | null, now = Date.now()): UserSession | null {
   if (!token) return null;
   const [payload, signature] = token.split(".");
   if (!payload || !signature) return null;
@@ -28,14 +35,25 @@ export function readSessionToken(token: string | undefined | null, now = Date.no
   const given = Buffer.from(signature);
   if (expected.length !== given.length || !timingSafeEqual(expected, given)) return null;
   try {
-    const { exp } = JSON.parse(Buffer.from(payload, "base64url").toString()) as { exp?: unknown };
-    return typeof exp === "number" && exp > now ? { expiresAt: exp } : null;
+    const d = JSON.parse(Buffer.from(payload, "base64url").toString()) as {
+      exp?: unknown; userId?: unknown; username?: unknown; role?: unknown; pathId?: unknown;
+    };
+    if (typeof d.exp !== "number" || d.exp <= now) return null;
+    if (typeof d.userId !== "string" || typeof d.username !== "string") return null;
+    if (d.role !== "admin" && d.role !== "user") return null;
+    return {
+      userId: d.userId,
+      username: d.username,
+      role: d.role,
+      pathId: (d.pathId as PathId) ?? null,
+      expiresAt: d.exp,
+    };
   } catch {
     return null;
   }
 }
 
-export async function currentSession(): Promise<{ expiresAt: number } | null> {
+export async function currentSession(): Promise<UserSession | null> {
   const store = await cookies();
   return readSessionToken(store.get(SESSION_COOKIE)?.value);
 }
@@ -56,10 +74,15 @@ export function clearSessionCookie(res: NextResponse): NextResponse {
   return res;
 }
 
-/** Returns a 401/503 response when the caller may not use the API, otherwise null. */
-export async function guard(): Promise<NextResponse | null> {
+export type GuardResult = { ok: true; session: UserSession } | { ok: false; response: NextResponse };
+
+export async function guard(): Promise<GuardResult> {
   if (!process.env.SESSION_SECRET) {
-    return NextResponse.json({ error: "Server is missing SESSION_SECRET." }, { status: 503 });
+    return { ok: false, response: NextResponse.json({ error: "Server is missing SESSION_SECRET." }, { status: 503 }) };
   }
-  return (await currentSession()) ? null : NextResponse.json({ error: "Locked" }, { status: 401 });
+  const session = await currentSession();
+  if (!session) {
+    return { ok: false, response: NextResponse.json({ error: "Locked" }, { status: 401 }) };
+  }
+  return { ok: true, session };
 }

@@ -8,11 +8,11 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "posters:fetch": "node scripts/fetch-posters.ts",
-    "seed:generate": "node scripts/generate-seed.ts",
-    "db:setup": "node scripts/generate-seed.ts && node scripts/db-setup.ts",
-    "check:schedule": "node scripts/check-schedule.ts",
-    "check:auth": "node scripts/check-auth.ts"
+    "posters:fetch": "tsx scripts/fetch-posters.ts",
+    "seed:generate": "tsx scripts/generate-seed.ts",
+    "db:setup": "tsx scripts/generate-seed.ts && tsx scripts/db-setup.ts",
+    "check:schedule": "tsx scripts/check-schedule.ts",
+    "check:auth": "tsx scripts/check-auth.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.116.0",
@@ -29,6 +29,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.3.5",
     "tailwindcss": "^4",
+    "tsx": "^4.23.15",
     "typescript": "^5"
   }
 }

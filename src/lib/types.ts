@@ -1,3 +1,13 @@
+export type UserRole = "admin" | "user";
+
+export interface UserSession {
+  userId: string;
+  username: string;
+  role: UserRole;
+  pathId: PathId | null;
+  expiresAt: number;
+}
+
 export type TitleType = "movie" | "tv" | "special";
 export type Universe = "mcu" | "non_marvel_studios";
 export type Importance = "essential" | "recommended" | "optional" | "unconfirmed";

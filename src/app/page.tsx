@@ -1,16 +1,13 @@
 import Link from "next/link";
 import { CaptainAmericaShield } from "@/components/captain-america-shield";
 import { Countdown } from "@/components/countdown";
-import { Dashboard } from "@/components/dashboard";
 import { PathCards } from "@/components/path-cards";
-import { PATHS } from "@/lib/paths";
 import { getTitles } from "@/lib/titles";
 
 export const revalidate = 3600;
 
 export default async function HomePage() {
   const titles = await getTitles();
-  const mcu = titles.filter(PATHS[0].include);
 
   return (
     <div className="space-y-12 pt-4 sm:pt-10">
@@ -20,7 +17,7 @@ export default async function HomePage() {
         </h1>
         <p className="max-w-2xl text-lg text-muted">
           Check off what you&apos;ve seen, choose story or release order, and turn the rest into a weekly viewing plan
-          that actually fits your schedule. Everything is saved to your shared account.
+          that actually fits your schedule. Everything is saved to your account.
         </p>
       </section>
 
@@ -28,7 +25,7 @@ export default async function HomePage() {
 
       <section aria-labelledby="paths-heading" className="space-y-4">
         <h2 id="paths-heading" className="font-display text-2xl font-semibold">
-          Pick your path
+          Your path
         </h2>
         <PathCards titles={titles} />
       </section>
