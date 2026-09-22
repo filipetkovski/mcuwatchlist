@@ -19,6 +19,22 @@ export const getTitles = cache(async (): Promise<Title[]> => {
   }
 });
 
+const X_MEN_IDS = new Set([
+  "x-men",
+  "x2-x-men-united",
+  "x-men-the-last-stand",
+  "x-men-origins-wolverine",
+  "x-men-first-class",
+  "the-wolverine",
+  "x-men-days-of-future-past",
+  "x-men-apocalypse",
+  "dark-phoenix",
+]);
+
+export function isXMenTitle(t: Title): boolean {
+  return X_MEN_IDS.has(t.id);
+}
+
 export function sortTitles(titles: Title[], order: OrderType): Title[] {
   return [...titles].sort((a, b) =>
     order === "story"

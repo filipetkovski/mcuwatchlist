@@ -5,7 +5,7 @@ import { useState, useSyncExternalStore } from "react";
 import { formatRuntime, releaseYear } from "@/lib/format";
 import { PATHS } from "@/lib/paths";
 import { PATH_QUERY_EVENT } from "@/lib/path-event";
-import { sortTitles } from "@/lib/titles";
+import { isXMenTitle, sortTitles } from "@/lib/titles";
 import type { Importance, OrderType, Title, TitleType } from "@/lib/types";
 import { useApp } from "./app-provider";
 import { DoomsdayBadge, ImportanceBadge } from "./badges";
@@ -63,8 +63,8 @@ export function TitleExplorer({ titles, initialOrder, orderBasePath }: Props) {
   const pathId = useSyncExternalStore(subscribePath, getPathParam, getServerPathParam) ?? DEFAULT_PATH;
   const [types, setTypes] = useState<Set<TitleType>>(new Set());
   const [importances, setImportances] = useState<Set<Importance>>(new Set());
-  const [includeNonMarvel, setIncludeNonMarvel] = useState(false);
-  const [status, setStatus] = useState<"all" | "unwatched" | "watched">("all");
+  const [universeFilter, setUniverseFilter] = useState<"all" | "mcu" | "xmen">("all");
+  const [status, setStatus] = useState<"unwatched" | "watched">("unwatched");
   const [query, setQuery] = useState("");
 
   const pathOptions = [
@@ -88,7 +88,16 @@ export function TitleExplorer({ titles, initialOrder, orderBasePath }: Props) {
     window.dispatchEvent(new Event(PATH_QUERY_EVENT));
   };
 
-  const scoped = sortTitles(isAllMcuPath && includeNonMarvel ? titles : titles.filter(selected.include), order);
+  const scoped = sortTitles(
+    isAllMcuPath
+      ? universeFilter === "all"
+        ? titles
+        : universeFilter === "mcu"
+          ? titles.filter((t) => t.universe === "mcu")
+          : titles.filter(isXMenTitle)
+      : titles.filter(selected.include),
+    order,
+  );
   const positions = new Map(scoped.map((t, i) => [t.id, i + 1]));
   const watchedIn = (id: string) => isWatched(activePathId, id);
 
@@ -97,10 +106,10 @@ export function TitleExplorer({ titles, initialOrder, orderBasePath }: Props) {
     (t) =>
       (types.size === 0 || types.has(t.type)) &&
       (importances.size === 0 || importances.has(t.importance)) &&
-      (status === "all" || (status === "watched") === watchedIn(t.id)) &&
+      (status === "watched") === watchedIn(t.id) &&
       (q === "" || t.title.toLowerCase().includes(q)),
   );
-  const filtersActive = types.size > 0 || importances.size > 0 || status !== "all" || q !== "";
+  const filtersActive = types.size > 0 || importances.size > 0 || status !== "unwatched" || q !== "";
 
   const markThrough = (id: string) => {
     const idx = scoped.findIndex((t) => t.id === id);
@@ -110,7 +119,7 @@ export function TitleExplorer({ titles, initialOrder, orderBasePath }: Props) {
   return (
     <div className="space-y-6">
       <div className="space-y-2">
-        <div className="grid grid-cols-1 gap-3 sm:flex sm:flex-wrap" role="group" aria-label="Path">
+        <div className="grid grid-cols-3 gap-4" role="group" aria-label="Path">
           {pathOptions.map((p) => {
             const doom = p.id === "prepare-for-doomsday";
             const ironMan = p.id === "new-to-marvel";
@@ -129,22 +138,22 @@ export function TitleExplorer({ titles, initialOrder, orderBasePath }: Props) {
                 type="button"
                 aria-pressed={active}
                 onClick={() => choosePath(p.id)}
-                className={`relative flex items-center gap-2 overflow-hidden rounded-xl border-2 border-black px-4 py-3 text-left transition-transform hover:-translate-y-0.5 ${
+                className={`relative flex min-h-24 items-center gap-2 overflow-hidden rounded-xl border-2 border-black px-5 py-5 text-left transition-transform hover:-translate-y-0.5 focus-visible:outline-none sm:min-h-28 sm:px-6 sm:py-6 ${
                   active ? "text-white" : "bg-surface-2 text-muted hover:text-ink"
                 }`}
                 style={active ? { background: activeBg } : undefined}
               >
                 {doom && (
-                  <DoomMask className="pointer-events-none absolute -bottom-4 -right-3 h-16 w-auto select-none opacity-70" />
+                  <DoomMask className="pointer-events-none absolute -bottom-5 -right-4 h-20 w-auto select-none opacity-70 sm:h-24" />
                 )}
                 {ironMan && (
-                  <IronManMask className="pointer-events-none absolute -bottom-4 -right-3 h-16 w-auto select-none opacity-70" />
+                  <IronManMask className="pointer-events-none absolute -bottom-5 -right-4 h-20 w-auto select-none opacity-70 sm:h-24" />
                 )}
                 {avengers && (
-                  <AvengersMask className="pointer-events-none absolute -bottom-4 -right-3 h-14 w-auto select-none opacity-70" />
+                  <AvengersMask className="pointer-events-none absolute -bottom-5 -right-4 h-16 w-auto select-none opacity-70 sm:h-20" />
                 )}
                 <span
-                  className={`relative font-display text-sm font-semibold sm:text-base ${
+                  className={`relative font-display text-base font-semibold sm:text-lg ${
                     active && doom ? "text-[#b8f7cd]" : active && ironMan ? "text-[#ffcf6b]" : active && avengers ? "text-[#cfe8ff]" : ""
                   }`}
                 >
@@ -189,18 +198,21 @@ export function TitleExplorer({ titles, initialOrder, orderBasePath }: Props) {
         </FilterRow>
         {isAllMcuPath && (
           <FilterRow label="Universe">
-            <Chip active={!includeNonMarvel} onClick={() => setIncludeNonMarvel(false)}>
-              MCU only
+            <Chip active={universeFilter === "all"} onClick={() => setUniverseFilter("all")}>
+              All
             </Chip>
-            <Chip active={includeNonMarvel} onClick={() => setIncludeNonMarvel(true)}>
-              Include non-Marvel Studios
+            <Chip active={universeFilter === "mcu"} onClick={() => setUniverseFilter("mcu")}>
+              MCU
+            </Chip>
+            <Chip active={universeFilter === "xmen"} onClick={() => setUniverseFilter("xmen")}>
+              X-Men
             </Chip>
           </FilterRow>
         )}
         <FilterRow label="Status">
-          {(["all", "unwatched", "watched"] as const).map((value) => (
+          {(["unwatched", "watched"] as const).map((value) => (
             <Chip key={value} active={status === value} onClick={() => setStatus(value)}>
-              {value === "all" ? "All" : value === "unwatched" ? "To watch" : "Watched"}
+              {value === "unwatched" ? "To watch" : "Watched"}
             </Chip>
           ))}
         </FilterRow>
@@ -217,7 +229,7 @@ export function TitleExplorer({ titles, initialOrder, orderBasePath }: Props) {
             onClick={() => {
               setTypes(new Set());
               setImportances(new Set());
-              setStatus("all");
+              setStatus("unwatched");
               setQuery("");
             }}
           >

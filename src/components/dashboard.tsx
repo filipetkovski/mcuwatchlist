@@ -40,7 +40,7 @@ export function Dashboard({ titles, label, pathId }: { titles: Title[]; label: s
     <section aria-label="Progress dashboard">
       <dl className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
         {tiles.map(([name, value]) => (
-          <div key={name} className="rounded-xl bg-surface px-4 py-4">
+          <div key={name} className="comic-panel px-4 py-4">
             <dt className="text-sm text-muted">{name}</dt>
             <dd className="font-display text-3xl font-semibold tabular-nums sm:text-4xl">{value}</dd>
           </div>

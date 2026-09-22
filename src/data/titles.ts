@@ -60,6 +60,15 @@ const rows: Array<
   ["secret-invasion", "Secret Invasion", "tv", "2023-06-21", 270, "optional"],
   ["loki-s2", "Loki (Season 2)", "tv", "2023-10-06", 300, "recommended", { leads: true }],
   ["the-marvels", "The Marvels", "movie", "2023-11-10", 105, "optional"],
+  ["x-men", "X-Men", "movie", "2000-07-14", 104, "optional", { universe: "non_marvel_studios" }],
+  ["x2-x-men-united", "X2: X-Men United", "movie", "2003-05-02", 133, "optional", { universe: "non_marvel_studios" }],
+  ["x-men-the-last-stand", "X-Men: The Last Stand", "movie", "2006-05-26", 104, "optional", { universe: "non_marvel_studios" }],
+  ["x-men-origins-wolverine", "X-Men Origins: Wolverine", "movie", "2009-05-01", 107, "optional", { universe: "non_marvel_studios" }],
+  ["x-men-first-class", "X-Men: First Class", "movie", "2011-06-03", 131, "optional", { universe: "non_marvel_studios" }],
+  ["the-wolverine", "The Wolverine", "movie", "2013-07-26", 126, "optional", { universe: "non_marvel_studios" }],
+  ["x-men-days-of-future-past", "X-Men: Days of Future Past", "movie", "2014-05-23", 132, "optional", { universe: "non_marvel_studios" }],
+  ["x-men-apocalypse", "X-Men: Apocalypse", "movie", "2016-05-27", 144, "optional", { universe: "non_marvel_studios" }],
+  ["dark-phoenix", "Dark Phoenix", "movie", "2019-06-07", 114, "optional", { universe: "non_marvel_studios" }],
   ["logan", "Logan", "movie", "2017-03-03", 137, "optional", { universe: "non_marvel_studios" }],
   ["deadpool", "Deadpool", "movie", "2016-02-12", 108, "optional", { universe: "non_marvel_studios" }],
   ["deadpool-2", "Deadpool 2", "movie", "2018-05-18", 119, "optional", { universe: "non_marvel_studios" }],
@@ -69,7 +78,6 @@ const rows: Array<
   ["thunderbolts", "Thunderbolts*", "movie", "2025-05-02", 127, "essential", { leads: true }],
   ["ironheart", "Ironheart", "tv", "2025-06-24", 270, "optional"],
   ["the-fantastic-four-first-steps", "The Fantastic Four: First Steps", "movie", "2025-07-25", 115, "essential", { leads: true }],
-  ["wonder-man", "Wonder Man", "tv", "2026-01-27", 260, "unconfirmed"],
   ["spider-man-brand-new-day", "Spider-Man: Brand New Day", "movie", "2026-07-31", 130, "unconfirmed"],
 ];
 
