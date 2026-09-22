@@ -1,0 +1,112 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-bg: #0a0f3a;
+  --color-surface: #16226b;
+  --color-surface-2: #0f1850;
+  --color-line: #3a4cc0;
+  --color-ink: #ffffff;
+  --color-muted: #b4bdf0;
+  --color-accent: #8f0d1a;
+  --color-accent-text: #ff6b70;
+  --color-accent-ink: #ffffff;
+  --color-violet: #4d9bff;
+  --color-good: #4ade9b;
+  --color-warn: #ffd23f;
+  --font-sans: var(--font-geist-sans);
+  --font-display: var(--font-comic), var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+:root {
+  color-scheme: dark;
+}
+
+body {
+  background:
+    radial-gradient(circle at 1.5px 1.5px, rgb(77 155 255 / 0.22) 1.5px, transparent 1.8px) 0 0 / 14px 14px,
+    radial-gradient(900px 500px at 100% -10%, rgb(255 59 63 / 0.35), transparent 60%),
+    radial-gradient(900px 500px at -10% 10%, rgb(77 155 255 / 0.25), transparent 60%),
+    var(--color-bg);
+  background-attachment: fixed;
+  color: var(--color-ink);
+  font-family: var(--font-sans), system-ui, sans-serif;
+}
+
+.font-display {
+  font-synthesis: none;
+  letter-spacing: 0.03em;
+}
+
+h1.font-display {
+  text-transform: uppercase;
+  text-shadow: 3px 3px 0 #000;
+  -webkit-text-stroke: 1px #000;
+  paint-order: stroke fill;
+}
+
+/* Comic panel: thick ink outline with a hard offset shadow */
+@utility comic-panel {
+  background: var(--color-surface);
+  border: 3px solid #000;
+  border-radius: 0.75rem;
+  box-shadow: 5px 5px 0 #000;
+}
+
+/* Comic button: shout-style label, chunky outline, presses down on click */
+@utility comic-btn {
+  border: 3px solid #000;
+  box-shadow: 3px 3px 0 #000;
+  font-family: var(--font-display);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-synthesis: none;
+  transition:
+    transform 0.08s,
+    box-shadow 0.08s;
+  &:hover {
+    transform: translate(-1px, -1px);
+    box-shadow: 4px 4px 0 #000;
+  }
+  &:active {
+    transform: translate(3px, 3px);
+    box-shadow: 0 0 0 #000;
+  }
+}
+
+::selection {
+  background: var(--color-accent);
+  color: #fff;
+}
+
+:focus-visible {
+  outline: 3px solid var(--color-warn);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
+@keyframes alarm-ring {
+  0%, 60%, 100% { transform: rotate(0); }
+  10%, 30%, 50% { transform: rotate(-16deg); }
+  20%, 40% { transform: rotate(16deg); }
+}
+
+@keyframes alarm-blink {
+  0%, 100% { background-color: #ffd23f; box-shadow: 0 0 8px 2px rgb(255 210 63 / 0.9); }
+  50% { background-color: #fff; box-shadow: none; }
+}
+
+.alarm-ring {
+  transform-origin: 50% 10%;
+  animation: alarm-ring 2.4s ease-in-out infinite;
+}
+
+.alarm-blink {
+  animation: alarm-blink 0.9s steps(1, end) infinite;
+}
