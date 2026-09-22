@@ -90,7 +90,7 @@ export function TitleExplorer({ titles, initialOrder, orderBasePath }: Props) {
         <OrderToggle order={order} onChange={setOrder} basePath={orderBasePath} />
       </div>
 
-      <div className="space-y-3 comic-panel p-4">
+      <div className="comic-panel space-y-4 p-4">
         <input
           type="search"
           value={query}
@@ -99,6 +99,7 @@ export function TitleExplorer({ titles, initialOrder, orderBasePath }: Props) {
           aria-label="Search titles"
           className="w-full rounded-lg border-2 border-black bg-surface-2 px-3 py-2 text-sm placeholder:text-muted"
         />
+
         <FilterRow label="Type">
           {TYPE_OPTIONS.map(([value, label]) => (
             <Chip key={value} active={types.has(value)} onClick={() => setTypes(toggleIn(types, value))}>
@@ -106,6 +107,7 @@ export function TitleExplorer({ titles, initialOrder, orderBasePath }: Props) {
             </Chip>
           ))}
         </FilterRow>
+
         <FilterRow label="Importance">
           {IMPORTANCE_OPTIONS.map(([value, label]) => (
             <Chip key={value} active={importances.has(value)} onClick={() => setImportances(toggleIn(importances, value))}>
@@ -113,6 +115,7 @@ export function TitleExplorer({ titles, initialOrder, orderBasePath }: Props) {
             </Chip>
           ))}
         </FilterRow>
+
         {isAllMcuPath && (
           <FilterRow label="Universe">
             <Chip active={universeFilter === "all"} onClick={() => setUniverseFilter("all")}>All</Chip>
@@ -120,6 +123,7 @@ export function TitleExplorer({ titles, initialOrder, orderBasePath }: Props) {
             <Chip active={universeFilter === "xmen"} onClick={() => setUniverseFilter("xmen")}>X-Men</Chip>
           </FilterRow>
         )}
+
         <FilterRow label="Status">
           {(["unwatched", "watched"] as const).map((value) => (
             <Chip key={value} active={status === value} onClick={() => setStatus(value)}>
@@ -134,13 +138,8 @@ export function TitleExplorer({ titles, initialOrder, orderBasePath }: Props) {
         {filtersActive && (
           <button
             type="button"
-            className="underline underline-offset-2 hover:text-ink"
-            onClick={() => {
-              setTypes(new Set());
-              setImportances(new Set());
-              setStatus("unwatched");
-              setQuery("");
-            }}
+            onClick={() => { setTypes(new Set()); setImportances(new Set()); setStatus("unwatched"); setQuery(""); }}
+            className="comic-btn rounded-lg bg-surface-2 px-3 py-1 text-xs text-muted hover:text-ink"
           >
             Clear filters
           </button>
@@ -217,9 +216,9 @@ function OrderToggle({
 
 function FilterRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <span className="w-full text-xs font-medium uppercase tracking-wide text-muted sm:w-24">{label}</span>
-      {children}
+    <div className="space-y-1 pl-3">
+      <span className="block font-display text-sm tracking-widest text-muted">{label}</span>
+      <div className="flex flex-wrap gap-2">{children}</div>
     </div>
   );
 }
@@ -230,10 +229,10 @@ function Chip({ active, onClick, children }: { active: boolean; onClick: () => v
       type="button"
       aria-pressed={active}
       onClick={onClick}
-      className={`rounded-full border px-3 py-1 text-sm transition-colors ${
+      className={`comic-btn rounded-xl px-3 py-1.5 text-sm transition-transform hover:-translate-y-0.5 ${
         active
-          ? "border-black bg-accent text-white shadow-[2px_2px_0_#000]"
-          : "border-line text-muted hover:border-muted hover:text-ink"
+          ? "bg-accent text-white"
+          : "bg-surface-2 text-muted hover:text-ink"
       }`}
     >
       {children}

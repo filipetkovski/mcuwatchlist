@@ -17,6 +17,6 @@ export async function POST() {
   const { error } = await db.from("invite_tokens").insert({ token, created_by: g.session.userId });
   if (error) return NextResponse.json({ error: "Couldn't generate invite." }, { status: 500 });
 
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000").replace(/\/$/, "");
   return NextResponse.json({ url: `${siteUrl}/register?key=${token}` });
 }
