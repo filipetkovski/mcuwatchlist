@@ -3,6 +3,7 @@
 import { useSyncExternalStore } from "react";
 import { toUTC } from "@/lib/dates";
 import { DOOMSDAY_RELEASE } from "@/lib/paths";
+import { DoomMask } from "./doom-mask";
 
 const subscribeTick = (callback: () => void) => {
   const id = setInterval(callback, 1000);
@@ -42,12 +43,13 @@ export function Countdown() {
 
   return (
     <div
-      className="comic-panel w-full p-3 sm:p-4"
+      className="comic-panel relative w-full overflow-hidden p-3 sm:p-4"
       style={{ background: "linear-gradient(160deg, #1f8a4f 0%, #0f5a33 55%, #08301c 100%)" }}
       role="timer"
       aria-label="Countdown to Avengers: Doomsday"
     >
-      <div className="flex items-center gap-3 sm:gap-4">
+      <DoomMask className="pointer-events-none absolute -bottom-8 -right-6 h-32 w-auto select-none opacity-25 sm:h-44" />
+      <div className="relative flex items-center gap-3 sm:gap-4">
         <svg
           viewBox="0 0 24 24"
           className={`h-8 w-8 shrink-0 text-warn sm:h-10 sm:w-10 ${alarm && !released ? "alarm-ring" : ""}`}
