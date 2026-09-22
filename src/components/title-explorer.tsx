@@ -97,7 +97,7 @@ export function TitleExplorer({ titles, initialOrder, orderBasePath }: Props) {
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search titles"
           aria-label="Search titles"
-          className="w-full rounded-lg border-2 border-black bg-surface-2 px-3 py-2 text-sm placeholder:text-muted"
+          className="w-full rounded-lg border-2 border-black bg-surface-2 px-3 py-2 text-sm placeholder:text-muted shadow-[3px_3px_0_#000]"
         />
 
         <FilterRow label="Type">
