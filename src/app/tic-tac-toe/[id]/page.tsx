@@ -22,9 +22,12 @@ interface Game {
   result: "win" | "draw" | null;
   question: GameQuestion | null;
   deadline: string | null;
+  misses: { x: number; o: number };
+  wrongAnswers: { x: number; o: number };
 }
 
 const POLL_MS = 2000;
+const MAX_STRIKES = 3;
 
 export default function TicTacToeGamePage() {
   const params = useParams<{ id: string }>();
@@ -148,10 +151,18 @@ export default function TicTacToeGamePage() {
           <Board board={game.board} onPick={myTurn ? setSelectedCell : undefined} selectedCell={selectedCell} />
 
           {game.status === "active" && (
-            <p className="text-center text-sm text-muted">
-              {myTurn ? "Your turn" : `${opponent.username}'s turn`}
-              {secondsLeft !== null && <span className="ml-2 font-mono font-bold tabular-nums">{secondsLeft}s</span>}
-            </p>
+            <div className="space-y-1 text-center">
+              <p className="text-sm text-muted">
+                {myTurn ? "Your turn" : `${opponent.username}'s turn`}
+                {secondsLeft !== null && <span className="ml-2 font-mono font-bold tabular-nums">{secondsLeft}s</span>}
+              </p>
+              <p className="text-xs text-muted">
+                Missed turns - You: {isPlayerX ? game.misses.x : game.misses.o}/{MAX_STRIKES} · {opponent.username}: {isPlayerX ? game.misses.o : game.misses.x}/{MAX_STRIKES}
+              </p>
+              <p className="text-xs text-muted">
+                Wrong answers - You: {isPlayerX ? game.wrongAnswers.x : game.wrongAnswers.o}/{MAX_STRIKES} · {opponent.username}: {isPlayerX ? game.wrongAnswers.o : game.wrongAnswers.x}/{MAX_STRIKES}
+              </p>
+            </div>
           )}
 
           {feedback && <p className="rounded-lg border-2 border-black bg-warn px-3 py-2 text-center text-sm font-medium text-black">{feedback}</p>}

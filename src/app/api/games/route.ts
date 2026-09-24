@@ -121,6 +121,19 @@ export async function POST(req: NextRequest) {
   if (!self?.tic_tac_toe_joined) return NextResponse.json({ error: "Join Tic-Tac-Toe before challenging someone." }, { status: 403 });
   if (!opponent.tic_tac_toe_joined) return NextResponse.json({ error: "That player hasn't joined Tic-Tac-Toe yet." }, { status: 400 });
 
+  const { data: existingGames, error: existingError } = await db
+    .from("tic_tac_toe_games")
+    .select("player_x, player_o")
+    .in("status", ["pending", "active"]);
+  if (existingError) return NextResponse.json({ error: "Couldn't send invite." }, { status: 500 });
+  const busy = (id: string) => existingGames.some((game) => game.player_x === id || game.player_o === id);
+  if (busy(userId)) {
+    return NextResponse.json({ error: "You already have a game in progress. Finish it before starting another." }, { status: 409 });
+  }
+  if (busy(opponentId)) {
+    return NextResponse.json({ error: "That player already has a game in progress." }, { status: 409 });
+  }
+
   const { data, error } = await db
     .from("tic_tac_toe_games")
     .insert({ player_x: userId, player_o: opponentId, status: "pending" })

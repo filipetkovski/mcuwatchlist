@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import {
   GAME_COLUMNS,
   TURN_SECONDS,
+  applyWrongAnswer,
   checkWinner,
   expireIfNeeded,
   isBoardFull,
@@ -56,20 +57,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const correct = answerIndex === questionRow.correct_index;
 
   if (!correct) {
-    const next = await pickQuestion(db, row.used_question_ids);
-    const { data: updated, error: updateError } = await db
-      .from("tic_tac_toe_games")
-      .update({
-        turn: opponentId,
-        current_question_id: next?.id ?? null,
-        question_deadline: next ? new Date(Date.now() + TURN_SECONDS * 1000).toISOString() : null,
-        used_question_ids: next?.usedIds ?? row.used_question_ids,
-      })
-      .eq("id", id)
-      .select(GAME_COLUMNS)
-      .single();
-    if (updateError || !updated) return NextResponse.json({ error: "Couldn't save your answer." }, { status: 500 });
-    return NextResponse.json({ game: await toClientGame(db, updated as GameRow, userId), correct: false });
+    const updated = await applyWrongAnswer(db, row, userId);
+    if (!updated) return NextResponse.json({ error: "Couldn't save your answer." }, { status: 500 });
+    return NextResponse.json({ game: await toClientGame(db, updated, userId), correct: false });
   }
 
   const board = [...row.board];

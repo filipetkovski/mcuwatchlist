@@ -104,6 +104,10 @@ export default function TicTacToePage() {
     setJoining(false);
   };
 
+  const hasGameInProgress = data
+    ? data.incomingInvites.length > 0 || data.outgoingInvites.length > 0 || data.activeGames.length > 0
+    : false;
+
   return (
     <div className="space-y-6">
       <header className="space-y-1">
@@ -213,53 +217,55 @@ export default function TicTacToePage() {
             </section>
           )}
 
-          <section className="comic-panel overflow-x-auto p-4">
+          <section className="comic-panel p-4">
             <h2 className="font-display text-xl font-semibold">Leaderboard</h2>
-            <table className="mt-3 w-full text-sm">
-              <thead>
-                <tr className="border-b-2 border-black text-left">
-                  <th className="py-2 pr-3 font-display font-semibold">#</th>
-                  <th className="py-2 pr-3 font-display font-semibold"></th>
-                  <th className="py-2 pr-3 font-display font-semibold">Player</th>
-                  <th className="py-2 pr-3 font-display font-semibold">
-                    <span className="flex items-center gap-1.5">
-                      <VibraniumIcon className="h-4 w-4" />
-                      Vibraniums
-                    </span>
-                  </th>
-                  <th className="py-2 pr-3 font-display font-semibold">W</th>
-                  <th className="py-2 pr-3 font-display font-semibold">L</th>
-                  <th className="py-2 font-display font-semibold">D</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-line">
-                {data.leaderboard.map((row, i) => (
-                  <tr key={row.id} className={row.id === user?.id ? "bg-surface-2/60" : undefined}>
-                    <td className="py-2 pr-3 text-muted">{i + 1}</td>
-                    <td className="py-2 pr-3">
-                      {row.id !== user?.id && (
-                        <button
-                          type="button"
-                          disabled={busyId === row.id}
-                          onClick={() => void invite(row.id)}
-                          className="comic-btn rounded-lg bg-violet px-3 py-1.5 text-xs text-white disabled:opacity-60"
-                        >
-                          Challenge
-                        </button>
-                      )}
-                    </td>
-                    <td className="py-2 pr-3 font-medium">
-                      {row.username}
-                      {row.id === user?.id && <span className="ml-2 text-xs text-muted">(you)</span>}
-                    </td>
-                    <td className="py-2 pr-3 font-mono font-bold tabular-nums">{row.vibranium}</td>
-                    <td className="py-2 pr-3 tabular-nums text-muted">{row.wins}</td>
-                    <td className="py-2 pr-3 tabular-nums text-muted">{row.losses}</td>
-                    <td className="py-2 tabular-nums text-muted">{row.draws}</td>
+            <div className="comic-scroll mt-3 overflow-x-auto pb-3">
+              <table className="w-full min-w-[760px] text-sm">
+                <thead>
+                  <tr className="border-b-2 border-black text-left">
+                    <th className="py-2 pr-4 font-display font-semibold">#</th>
+                    <th className="py-2 pr-4 font-display font-semibold"></th>
+                    <th className="py-2 pr-4 font-display font-semibold">Player</th>
+                    <th className="py-2 pr-4 font-display font-semibold">
+                      <span className="flex items-center gap-1.5">
+                        <VibraniumIcon className="h-4 w-4" />
+                        Vibraniums
+                      </span>
+                    </th>
+                    <th className="py-2 pr-4 font-display font-semibold">W</th>
+                    <th className="py-2 pr-4 font-display font-semibold">L</th>
+                    <th className="py-2 font-display font-semibold">D</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-line">
+                  {data.leaderboard.map((row, i) => (
+                    <tr key={row.id} className={row.id === user?.id ? "bg-surface-2/60" : undefined}>
+                      <td className="py-2 pr-4 text-muted">{i + 1}</td>
+                      <td className="py-2 pr-4">
+                        {row.id !== user?.id && !hasGameInProgress && (
+                          <button
+                            type="button"
+                            disabled={busyId === row.id}
+                            onClick={() => void invite(row.id)}
+                            className="comic-btn rounded-lg bg-violet px-3 py-1.5 text-xs text-white disabled:opacity-60"
+                          >
+                            Challenge
+                          </button>
+                        )}
+                      </td>
+                      <td className="py-2 pr-4 font-medium">
+                        {row.username}
+                        {row.id === user?.id && <span className="ml-2 text-xs text-muted">(you)</span>}
+                      </td>
+                      <td className="py-2 pr-4 font-mono font-bold tabular-nums">{row.vibranium}</td>
+                      <td className="py-2 pr-4 tabular-nums text-muted">{row.wins}</td>
+                      <td className="py-2 pr-4 tabular-nums text-muted">{row.losses}</td>
+                      <td className="py-2 tabular-nums text-muted">{row.draws}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </section>
 
           {data.finishedGames.length > 0 && (

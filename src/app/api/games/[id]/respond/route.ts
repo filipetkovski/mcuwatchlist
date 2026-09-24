@@ -31,6 +31,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ game: await toClientGame(db, declined as GameRow, g.session.userId) });
   }
 
+  const { data: existingGames, error: existingError } = await db
+    .from("tic_tac_toe_games")
+    .select("id, player_x, player_o")
+    .eq("status", "active")
+    .neq("id", id);
+  if (existingError) return NextResponse.json({ error: "Couldn't start the game." }, { status: 500 });
+  const busy = (playerId: string) => existingGames.some((game) => game.player_x === playerId || game.player_o === playerId);
+  if (busy(row.player_x) || busy(row.player_o)) {
+    return NextResponse.json({ error: "One of you already has a game in progress. Finish it first." }, { status: 409 });
+  }
+
   const question = await pickQuestion(db, []);
   if (!question) return NextResponse.json({ error: "No trivia questions available." }, { status: 500 });
 

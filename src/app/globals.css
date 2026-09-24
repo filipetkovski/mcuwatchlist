@@ -80,6 +80,34 @@ h1.font-display {
   }
 }
 
+/* Comic scrollbar: thick, bordered, hard-shadow thumb to match comic-panel/comic-btn */
+@utility comic-scroll {
+  scrollbar-width: auto;
+  scrollbar-color: var(--color-accent) var(--color-surface-2);
+
+  &::-webkit-scrollbar {
+    height: 16px;
+    width: 16px;
+  }
+  &::-webkit-scrollbar-track {
+    background: var(--color-surface-2);
+    border: 2px solid #000;
+    border-radius: 8px;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: var(--color-accent);
+    border: 2px solid #000;
+    border-radius: 8px;
+    box-shadow: 2px 2px 0 #000;
+  }
+  &::-webkit-scrollbar-thumb:hover {
+    background: var(--color-violet);
+  }
+  &::-webkit-scrollbar-corner {
+    background: var(--color-surface-2);
+  }
+}
+
 ::selection {
   background: var(--color-accent);
   color: #fff;

@@ -127,6 +127,10 @@ export interface TicTacToeGame {
   /** Only present when it's the requesting user's turn. */
   question: GameQuestion | null;
   deadline: string | null;
+  /** Missed turns (timed out) per player - 3 loses the game for that player. */
+  misses: { x: number; o: number };
+  /** Wrong answers per player - 3 ends the game as a draw. */
+  wrongAnswers: { x: number; o: number };
   createdAt: string;
   updatedAt: string;
 }
