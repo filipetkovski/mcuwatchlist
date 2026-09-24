@@ -224,8 +224,8 @@ export default function TicTacToePage() {
                 <thead>
                   <tr className="border-b-2 border-black text-left">
                     <th className="py-2 pr-4 font-display font-semibold">#</th>
-                    <th className="py-2 pr-4 font-display font-semibold"></th>
-                    <th className="py-2 pr-4 font-display font-semibold">Player</th>
+                    <th className="py-2 pr-1.5 font-display font-semibold"></th>
+                    <th className="py-2 pr-1.5 font-display font-semibold">Player</th>
                     <th className="py-2 pr-4 font-display font-semibold">
                       <span className="flex items-center gap-1.5">
                         <VibraniumIcon className="h-4 w-4" />
@@ -241,7 +241,7 @@ export default function TicTacToePage() {
                   {data.leaderboard.map((row, i) => (
                     <tr key={row.id} className={row.id === user?.id ? "bg-surface-2/60" : undefined}>
                       <td className="py-2 pr-4 text-muted">{i + 1}</td>
-                      <td className="py-2 pr-4">
+                      <td className="py-2 pr-1.5">
                         {row.id !== user?.id && !hasGameInProgress && (
                           <button
                             type="button"
@@ -253,7 +253,7 @@ export default function TicTacToePage() {
                           </button>
                         )}
                       </td>
-                      <td className="py-2 pr-4 font-medium">
+                      <td className="py-2 pr-1.5 font-medium">
                         {row.username}
                         {row.id === user?.id && <span className="ml-2 text-xs text-muted">(you)</span>}
                       </td>
