@@ -59,7 +59,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (!correct) {
     const updated = await applyWrongAnswer(db, row, userId);
     if (!updated) return NextResponse.json({ error: "Couldn't save your answer." }, { status: 500 });
-    return NextResponse.json({ game: await toClientGame(db, updated, userId), correct: false });
+    return NextResponse.json({ game: await toClientGame(db, updated), correct: false });
   }
 
   const board = [...row.board];
@@ -84,7 +84,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     if (updateError || !updated) return NextResponse.json({ error: "Couldn't save your move." }, { status: 500 });
     await db.rpc("adjust_vibranium", { p_user_id: userId, p_delta: 100 });
     await db.rpc("adjust_vibranium", { p_user_id: opponentId, p_delta: -50 });
-    return NextResponse.json({ game: await toClientGame(db, updated as GameRow, userId), correct: true });
+    return NextResponse.json({ game: await toClientGame(db, updated as GameRow), correct: true });
   }
 
   if (isBoardFull(board)) {
@@ -105,7 +105,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     if (updateError || !updated) return NextResponse.json({ error: "Couldn't save your move." }, { status: 500 });
     await db.rpc("adjust_vibranium", { p_user_id: row.player_x, p_delta: -10 });
     await db.rpc("adjust_vibranium", { p_user_id: row.player_o, p_delta: -10 });
-    return NextResponse.json({ game: await toClientGame(db, updated as GameRow, userId), correct: true });
+    return NextResponse.json({ game: await toClientGame(db, updated as GameRow), correct: true });
   }
 
   const next = await pickQuestion(db, row.used_question_ids);
@@ -122,5 +122,5 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     .select(GAME_COLUMNS)
     .single();
   if (updateError || !updated) return NextResponse.json({ error: "Couldn't save your move." }, { status: 500 });
-  return NextResponse.json({ game: await toClientGame(db, updated as GameRow, userId), correct: true });
+  return NextResponse.json({ game: await toClientGame(db, updated as GameRow), correct: true });
 }

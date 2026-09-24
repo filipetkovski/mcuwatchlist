@@ -151,15 +151,15 @@ export default function TicTacToeGamePage() {
           <Board board={game.board} onPick={myTurn ? setSelectedCell : undefined} selectedCell={selectedCell} />
 
           {game.status === "active" && (
-            <div className="space-y-1 text-center">
-              <p className="text-sm text-muted">
+            <div className="space-y-1.5 text-center">
+              <p className="text-base text-muted">
                 {myTurn ? "Your turn" : `${opponent.username}'s turn`}
-                {secondsLeft !== null && <span className="ml-2 font-mono font-bold tabular-nums">{secondsLeft}s</span>}
+                {secondsLeft !== null && <span className="ml-2 font-mono text-lg font-bold tabular-nums">{secondsLeft}s</span>}
               </p>
-              <p className="text-xs text-muted">
+              <p className="text-sm text-muted">
                 Missed turns - You: {isPlayerX ? game.misses.x : game.misses.o}/{MAX_STRIKES} · {opponent.username}: {isPlayerX ? game.misses.o : game.misses.x}/{MAX_STRIKES}
               </p>
-              <p className="text-xs text-muted">
+              <p className="text-sm text-muted">
                 Wrong answers - You: {isPlayerX ? game.wrongAnswers.x : game.wrongAnswers.o}/{MAX_STRIKES} · {opponent.username}: {isPlayerX ? game.wrongAnswers.o : game.wrongAnswers.x}/{MAX_STRIKES}
               </p>
             </div>
@@ -167,7 +167,7 @@ export default function TicTacToeGamePage() {
 
           {feedback && <p className="rounded-lg border-2 border-black bg-warn px-3 py-2 text-center text-sm font-medium text-black">{feedback}</p>}
 
-          {myTurn && game.question && (
+          {game.status === "active" && game.question && (
             <div className="comic-panel space-y-3 p-4">
               <p className="font-semibold">{game.question.question}</p>
               <div className="grid gap-2">
@@ -175,26 +175,33 @@ export default function TicTacToeGamePage() {
                   <button
                     key={i}
                     type="button"
+                    disabled={!myTurn}
                     onClick={() => setSelectedAnswer(i)}
-                    className={`rounded-lg border-2 border-black px-3 py-2 text-left text-sm font-medium transition-colors ${
-                      selectedAnswer === i ? "bg-accent text-white" : "bg-surface-2 hover:border-accent"
-                    }`}
+                    className={`rounded-lg border-2 border-black px-3 py-2 text-left text-sm font-medium transition-colors disabled:cursor-default ${
+                      selectedAnswer === i ? "bg-accent text-white" : "bg-surface-2 disabled:opacity-60"
+                    } ${myTurn ? "hover:border-accent" : ""}`}
                   >
                     {option}
                   </button>
                 ))}
               </div>
-              <p className="text-xs text-muted">
-                {selectedCell === null ? "Pick an answer, then pick an empty square above." : "Pick an answer if you haven't, then submit."}
-              </p>
-              <button
-                type="button"
-                disabled={busy || selectedAnswer === null || selectedCell === null}
-                onClick={() => void submitTurn()}
-                className="comic-btn w-full rounded-lg bg-violet px-4 py-2.5 text-white disabled:opacity-40"
-              >
-                Submit
-              </button>
+              {myTurn ? (
+                <>
+                  <p className="text-xs text-muted">
+                    {selectedCell === null ? "Pick an answer, then pick an empty square above." : "Pick an answer if you haven't, then submit."}
+                  </p>
+                  <button
+                    type="button"
+                    disabled={busy || selectedAnswer === null || selectedCell === null}
+                    onClick={() => void submitTurn()}
+                    className="comic-btn w-full rounded-lg bg-violet px-4 py-2.5 text-white disabled:opacity-40"
+                  >
+                    Submit
+                  </button>
+                </>
+              ) : (
+                <p className="text-xs text-muted">Waiting for {opponent.username} to answer…</p>
+              )}
             </div>
           )}
 

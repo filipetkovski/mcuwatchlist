@@ -152,16 +152,12 @@ export async function applyWrongAnswer(db: SupabaseClient, game: GameRow, userId
   });
 }
 
-export async function toClientGame(
-  db: SupabaseClient,
-  game: GameRow,
-  viewerId: string,
-): Promise<TicTacToeGame> {
+export async function toClientGame(db: SupabaseClient, game: GameRow): Promise<TicTacToeGame> {
   const { data: players } = await db.from("users").select("id, username").in("id", [game.player_x, game.player_o]);
   const byId = new Map((players ?? []).map((p) => [p.id as string, p.username as string]));
 
   let question = null;
-  if (game.status === "active" && game.turn === viewerId && game.current_question_id) {
+  if (game.status === "active" && game.current_question_id) {
     const { data: q } = await db
       .from("trivia_questions")
       .select("id, question, options")

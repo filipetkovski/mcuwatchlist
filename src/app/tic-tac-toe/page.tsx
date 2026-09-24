@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useApp } from "@/components/app-provider";
 import { TicTacToeIcon } from "@/components/tic-tac-toe-icon";
 
@@ -50,18 +51,28 @@ const POLL_MS = 4000;
 
 export default function TicTacToePage() {
   const { user } = useApp();
+  const router = useRouter();
   const [data, setData] = useState<LobbyData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [joining, setJoining] = useState(false);
+  const pendingOutgoingIds = useRef<Set<string>>(new Set());
 
   const load = useCallback(async () => {
     const res = await fetch("/api/games");
     const body = (await res.json().catch(() => ({}))) as LobbyData & { error?: string };
     if (!res.ok) { setError(body.error ?? "Couldn't load the game lobby."); return; }
+
+    const justAccepted = body.activeGames?.find((g) => pendingOutgoingIds.current.has(g.id));
+    pendingOutgoingIds.current = new Set((body.outgoingInvites ?? []).map((i) => i.id));
+    if (justAccepted) {
+      router.push(`/tic-tac-toe/${justAccepted.id}`);
+      return;
+    }
+
     setData(body);
     setError(null);
-  }, []);
+  }, [router]);
 
   useEffect(() => {
     const initial = window.setTimeout(() => void load(), 0);
@@ -257,7 +268,12 @@ export default function TicTacToePage() {
                         {row.username}
                         {row.id === user?.id && <span className="ml-1 text-xs text-muted">(you)</span>}
                       </td>
-                      <td className="whitespace-nowrap py-2 pr-2 font-mono font-bold tabular-nums">{row.vibranium}</td>
+                      <td className="whitespace-nowrap py-2 pr-2 font-mono font-bold tabular-nums">
+                        <span title="Vibraniums" className="inline-flex items-center gap-1">
+                          <VibraniumIcon className="h-4 w-4" />
+                          {row.vibranium}
+                        </span>
+                      </td>
                       <td className="whitespace-nowrap py-2 pr-2 tabular-nums text-muted">{row.wins}</td>
                       <td className="whitespace-nowrap py-2 pr-2 tabular-nums text-muted">{row.losses}</td>
                       <td className="whitespace-nowrap py-2 tabular-nums text-muted">{row.draws}</td>

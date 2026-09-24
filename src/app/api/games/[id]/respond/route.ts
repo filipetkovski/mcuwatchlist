@@ -28,7 +28,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       .select(GAME_COLUMNS)
       .single();
     if (declineError || !declined) return NextResponse.json({ error: "Couldn't decline." }, { status: 500 });
-    return NextResponse.json({ game: await toClientGame(db, declined as GameRow, g.session.userId) });
+    return NextResponse.json({ game: await toClientGame(db, declined as GameRow) });
   }
 
   const { data: existingGames, error: existingError } = await db
@@ -59,5 +59,5 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     .single();
   if (startError || !started) return NextResponse.json({ error: "Couldn't start the game." }, { status: 500 });
 
-  return NextResponse.json({ game: await toClientGame(db, started as GameRow, g.session.userId) });
+  return NextResponse.json({ game: await toClientGame(db, started as GameRow) });
 }

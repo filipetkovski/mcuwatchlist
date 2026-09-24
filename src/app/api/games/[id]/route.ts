@@ -20,5 +20,5 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   }
 
   const current = await expireIfNeeded(db, row);
-  return NextResponse.json({ game: await toClientGame(db, current, g.session.userId) });
+  return NextResponse.json({ game: await toClientGame(db, current) });
 }
