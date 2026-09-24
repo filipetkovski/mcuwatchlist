@@ -6,7 +6,7 @@ import {
   checkWinner,
   expireIfNeeded,
   isBoardFull,
-  pickQuestion,
+  pickQuestionForTurn,
   toClientGame,
   type GameRow,
 } from "@/lib/games";
@@ -54,7 +54,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   const mark: GameCell = row.player_x === userId ? "X" : "O";
   const opponentId = row.player_x === userId ? row.player_o : row.player_x;
-  const correct = answerIndex === questionRow.correct_index;
+  const canonicalAnswerIndex = row.question_order ? row.question_order[answerIndex] : answerIndex;
+  const correct = canonicalAnswerIndex === questionRow.correct_index;
 
   if (!correct) {
     const updated = await applyWrongAnswer(db, row, userId);
@@ -77,6 +78,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         turn: null,
         current_question_id: null,
         question_deadline: null,
+        question_order: null,
       })
       .eq("id", id)
       .select(GAME_COLUMNS)
@@ -98,6 +100,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         turn: null,
         current_question_id: null,
         question_deadline: null,
+        question_order: null,
       })
       .eq("id", id)
       .select(GAME_COLUMNS)
@@ -108,7 +111,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ game: await toClientGame(db, updated as GameRow), correct: true });
   }
 
-  const next = await pickQuestion(db, row.used_question_ids);
+  const next = await pickQuestionForTurn(db, row, opponentId);
   const { data: updated, error: updateError } = await db
     .from("tic_tac_toe_games")
     .update({
@@ -116,6 +119,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       turn: opponentId,
       current_question_id: next?.id ?? null,
       question_deadline: next ? new Date(Date.now() + TURN_SECONDS * 1000).toISOString() : null,
+      question_order: next?.order ?? null,
       used_question_ids: next?.usedIds ?? row.used_question_ids,
     })
     .eq("id", id)

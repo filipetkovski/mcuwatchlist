@@ -237,12 +237,7 @@ export default function TicTacToePage() {
                     <th className="whitespace-nowrap py-2 pr-1.5 font-display font-semibold">#</th>
                     <th className="whitespace-nowrap py-2 pr-1 font-display font-semibold"></th>
                     <th className="whitespace-nowrap py-2 pr-1 font-display font-semibold">Player</th>
-                    <th className="whitespace-nowrap py-2 pr-2 font-display font-semibold">
-                      <span title="Vibraniums">
-                        <VibraniumIcon className="h-4 w-4" />
-                        <span className="sr-only">Vibraniums</span>
-                      </span>
-                    </th>
+                    <th className="whitespace-nowrap py-2 pr-2 font-display font-semibold">Vibraniums</th>
                     <th className="whitespace-nowrap py-2 pr-2 font-display font-semibold">W</th>
                     <th className="whitespace-nowrap py-2 pr-2 font-display font-semibold">L</th>
                     <th className="whitespace-nowrap py-2 font-display font-semibold">D</th>
@@ -270,8 +265,8 @@ export default function TicTacToePage() {
                       </td>
                       <td className="whitespace-nowrap py-2 pr-2 font-mono font-bold tabular-nums">
                         <span title="Vibraniums" className="inline-flex items-center gap-1">
-                          <VibraniumIcon className="h-4 w-4" />
                           {row.vibranium}
+                          <VibraniumIcon className="h-4 w-4" />
                         </span>
                       </td>
                       <td className="whitespace-nowrap py-2 pr-2 tabular-nums text-muted">{row.wins}</td>

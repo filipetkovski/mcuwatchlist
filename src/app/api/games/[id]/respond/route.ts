@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { GAME_COLUMNS, TURN_SECONDS, pickQuestion, toClientGame, type GameRow } from "@/lib/games";
+import { GAME_COLUMNS, TURN_SECONDS, pickQuestionForTurn, toClientGame, type GameRow } from "@/lib/games";
 import { guard } from "@/lib/session";
 import { admin } from "@/lib/supabase/admin";
 
@@ -42,7 +42,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: "One of you already has a game in progress. Finish it first." }, { status: 409 });
   }
 
-  const question = await pickQuestion(db, []);
+  const question = await pickQuestionForTurn(db, row, row.player_x);
   if (!question) return NextResponse.json({ error: "No trivia questions available." }, { status: 500 });
 
   const { data: started, error: startError } = await db
@@ -52,6 +52,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       turn: row.player_x,
       current_question_id: question.id,
       question_deadline: new Date(Date.now() + TURN_SECONDS * 1000).toISOString(),
+      question_order: question.order,
       used_question_ids: question.usedIds,
     })
     .eq("id", id)
