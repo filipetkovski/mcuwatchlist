@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
 
   await db.from("invite_tokens").update({ used_at: new Date().toISOString(), used_by: user.id }).eq("token", token);
 
-  const { token: sessionToken, expiresAt } = createSessionToken(user.id, user.username, "user", null, false);
+  const { token: sessionToken, expiresAt } = createSessionToken(user.id, user.username, "user", null, false, false);
   return withSessionCookie(
     NextResponse.json({ ok: true, username: user.username, role: "user", pathId: null, expiresAt }),
     sessionToken,

@@ -6,6 +6,8 @@ import { AppShell } from "@/components/app-shell";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { RatingsNotice } from "@/components/ratings-notice";
+import { TicTacToeNotice } from "@/components/tic-tac-toe-notice";
+import { GameInviteBanner } from "@/components/game-invite-banner";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
@@ -35,6 +37,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           <AppShell>
             <SiteHeader />
             <RatingsNotice />
+            <TicTacToeNotice />
+            <GameInviteBanner />
             <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6">{children}</main>
             <SiteFooter />
           </AppShell>

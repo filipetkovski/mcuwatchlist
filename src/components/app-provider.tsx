@@ -11,6 +11,7 @@ interface User {
   role: UserRole;
   pathId: PathId | null;
   ratingsNoticeSeen: boolean;
+  ticTacToeNoticeSeen: boolean;
 }
 
 interface AppContextValue {
@@ -26,6 +27,7 @@ interface AppContextValue {
   ratingFor: (titleId: string) => TitleRating;
   rateTitle: (titleId: string, rating: number | null) => void;
   dismissRatingsNotice: () => void;
+  dismissTicTacToeNotice: () => void;
   schedules: SavedSchedule[];
   saveSchedule: (name: string, schedule: GeneratedSchedule) => Promise<SavedSchedule | null>;
   updateSchedule: (id: string, schedule: GeneratedSchedule) => Promise<boolean>;
@@ -95,6 +97,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         role?: UserRole;
         pathId?: PathId | null;
         ratingsNoticeSeen?: boolean;
+        ticTacToeNoticeSeen?: boolean;
         expiresAt?: number | null;
       };
       if (!data.configured) {
@@ -106,6 +109,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           role: data.role,
           pathId: data.pathId ?? null,
           ratingsNoticeSeen: data.ratingsNoticeSeen ?? false,
+          ticTacToeNoticeSeen: data.ticTacToeNoticeSeen ?? false,
         };
         setUser(u);
         setExpiresAt(data.expiresAt ?? null);
@@ -174,6 +178,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         role?: UserRole;
         pathId?: PathId | null;
         ratingsNoticeSeen?: boolean;
+        ticTacToeNoticeSeen?: boolean;
         expiresAt?: number;
       };
       if (!res.ok) return data.error ?? "Couldn't log in.";
@@ -184,6 +189,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         role: data.role,
         pathId: data.pathId ?? null,
         ratingsNoticeSeen: data.ratingsNoticeSeen ?? false,
+        ticTacToeNoticeSeen: data.ticTacToeNoticeSeen ?? false,
       };
       setUser(u);
       setExpiresAt(data.expiresAt ?? null);
@@ -263,6 +269,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     api("/api/session/rating-notice", { method: "POST" }).catch(() => {});
   }, [api]);
 
+  const dismissTicTacToeNotice = useCallback(() => {
+    setUser((u) => (u ? { ...u, ticTacToeNoticeSeen: true } : u));
+    api("/api/session/tic-tac-toe-notice", { method: "POST" }).catch(() => {});
+  }, [api]);
+
   const saveSchedule = useCallback(
     async (name: string, schedule: GeneratedSchedule) => {
       try {
@@ -327,6 +338,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       ratingFor: (titleId) => ratings[titleId] ?? NO_RATING,
       rateTitle,
       dismissRatingsNotice,
+      dismissTicTacToeNotice,
       schedules,
       saveSchedule,
       updateSchedule,
@@ -346,6 +358,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       ratings,
       rateTitle,
       dismissRatingsNotice,
+      dismissTicTacToeNotice,
       schedules,
       saveSchedule,
       updateSchedule,

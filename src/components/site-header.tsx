@@ -8,6 +8,7 @@ import { LockButton } from "./lock-button";
 const NAV = [
   { href: "/watch-order/story", label: "Watch order" },
   { href: "/planner", label: "Planner" },
+  { href: "/tic-tac-toe", label: "Tic-Tac-Toe" },
 ];
 
 export function SiteHeader() {

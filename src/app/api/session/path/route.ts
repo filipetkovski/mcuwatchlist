@@ -22,6 +22,13 @@ export async function POST(req: NextRequest) {
   const { error } = await db.from("users").update({ path_id: pathId }).eq("id", session.userId);
   if (error) return NextResponse.json({ error: "Couldn't save path." }, { status: 500 });
 
-  const { token, expiresAt } = createSessionToken(session.userId, session.username, session.role, pathId, session.ratingsNoticeSeen);
+  const { token, expiresAt } = createSessionToken(
+    session.userId,
+    session.username,
+    session.role,
+    pathId,
+    session.ratingsNoticeSeen,
+    session.ticTacToeNoticeSeen,
+  );
   return withSessionCookie(NextResponse.json({ ok: true, pathId, expiresAt }), token);
 }

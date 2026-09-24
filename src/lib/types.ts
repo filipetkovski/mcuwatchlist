@@ -6,6 +6,7 @@ export interface UserSession {
   role: UserRole;
   pathId: PathId | null;
   ratingsNoticeSeen: boolean;
+  ticTacToeNoticeSeen: boolean;
   expiresAt: number;
 }
 
@@ -97,4 +98,44 @@ export interface SavedSchedule {
   name: string;
   created_at: string;
   schedule: GeneratedSchedule;
+}
+
+export type GameCell = "X" | "O" | null;
+export type GameStatus = "pending" | "active" | "finished" | "declined";
+export type GameResult = "win" | "draw";
+
+export interface GamePlayer {
+  id: string;
+  username: string;
+}
+
+export interface GameQuestion {
+  id: string;
+  question: string;
+  options: string[];
+}
+
+export interface TicTacToeGame {
+  id: string;
+  playerX: GamePlayer;
+  playerO: GamePlayer;
+  board: GameCell[];
+  status: GameStatus;
+  turn: string | null;
+  winner: string | null;
+  result: GameResult | null;
+  /** Only present when it's the requesting user's turn. */
+  question: GameQuestion | null;
+  deadline: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface LeaderboardEntry {
+  id: string;
+  username: string;
+  vibranium: number;
+  wins: number;
+  losses: number;
+  draws: number;
 }
