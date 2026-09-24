@@ -5,6 +5,7 @@ import { AppProvider } from "@/components/app-provider";
 import { AppShell } from "@/components/app-shell";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
+import { RatingsNotice } from "@/components/ratings-notice";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
@@ -33,6 +34,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <AppProvider>
           <AppShell>
             <SiteHeader />
+            <RatingsNotice />
             <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6">{children}</main>
             <SiteFooter />
           </AppShell>

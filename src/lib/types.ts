@@ -5,6 +5,7 @@ export interface UserSession {
   username: string;
   role: UserRole;
   pathId: PathId | null;
+  ratingsNoticeSeen: boolean;
   expiresAt: number;
 }
 
@@ -31,6 +32,15 @@ export interface Title {
 
 /** title_id -> ISO timestamp of when it was marked watched (one map per path) */
 export type WatchedMap = Record<string, string>;
+
+export interface TitleRating {
+  average: number | null;
+  count: number;
+  mine: number | null;
+}
+
+/** title_id -> aggregate rating info */
+export type RatingsMap = Record<string, TitleRating>;
 
 export interface ScheduleSettings {
   scope: ScopeId;

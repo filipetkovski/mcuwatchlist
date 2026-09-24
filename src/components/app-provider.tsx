@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import type { GeneratedSchedule, PathId, SavedSchedule, UserRole, WatchedMap } from "@/lib/types";
+import type { GeneratedSchedule, PathId, RatingsMap, SavedSchedule, TitleRating, UserRole, WatchedMap } from "@/lib/types";
 
 type Status = "checking" | "locked" | "path-pending" | "unlocked" | "unconfigured";
 
@@ -10,6 +10,7 @@ interface User {
   username: string;
   role: UserRole;
   pathId: PathId | null;
+  ratingsNoticeSeen: boolean;
 }
 
 interface AppContextValue {
@@ -22,6 +23,9 @@ interface AppContextValue {
   isWatched: (pathId: string, titleId: string) => boolean;
   watchedFor: (pathId: string) => WatchedMap;
   setWatched: (pathId: string, titleIds: string[], watched: boolean) => void;
+  ratingFor: (titleId: string) => TitleRating;
+  rateTitle: (titleId: string, rating: number | null) => void;
+  dismissRatingsNotice: () => void;
   schedules: SavedSchedule[];
   saveSchedule: (name: string, schedule: GeneratedSchedule) => Promise<SavedSchedule | null>;
   updateSchedule: (id: string, schedule: GeneratedSchedule) => Promise<boolean>;
@@ -39,6 +43,7 @@ export function useApp(): AppContextValue {
 }
 
 const NO_PROGRESS: WatchedMap = Object.freeze({}) as WatchedMap;
+const NO_RATING: TitleRating = Object.freeze({ average: null, count: 0, mine: null });
 
 class LockedError extends Error {}
 
@@ -47,6 +52,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [expiresAt, setExpiresAt] = useState<number | null>(null);
   const [progress, setProgress] = useState<Record<string, WatchedMap>>({});
+  const [ratings, setRatings] = useState<RatingsMap>({});
   const [schedules, setSchedules] = useState<SavedSchedule[]>([]);
   const [dataReady, setDataReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -56,6 +62,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
     setExpiresAt(null);
     setProgress({});
+    setRatings({});
     setSchedules([]);
     setDataReady(false);
   }, []);
@@ -87,12 +94,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         username?: string;
         role?: UserRole;
         pathId?: PathId | null;
+        ratingsNoticeSeen?: boolean;
         expiresAt?: number | null;
       };
       if (!data.configured) {
         setStatus("unconfigured");
       } else if (data.authenticated && data.userId && data.username && data.role) {
-        const u: User = { id: data.userId, username: data.username, role: data.role, pathId: data.pathId ?? null };
+        const u: User = {
+          id: data.userId,
+          username: data.username,
+          role: data.role,
+          pathId: data.pathId ?? null,
+          ratingsNoticeSeen: data.ratingsNoticeSeen ?? false,
+        };
         setUser(u);
         setExpiresAt(data.expiresAt ?? null);
         setStatus(u.pathId ? "unlocked" : "path-pending");
@@ -111,12 +125,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const loadData = useCallback(async () => {
     try {
-      const [p, s] = await Promise.all([
+      const [p, s, r] = await Promise.all([
         api<{ progress: Record<string, WatchedMap> }>("/api/progress"),
         api<{ schedules: SavedSchedule[] }>("/api/schedules"),
+        api<{ ratings: RatingsMap }>("/api/ratings"),
       ]);
       setProgress(p.progress);
       setSchedules(s.schedules);
+      setRatings(r.ratings);
       setDataReady(true);
     } catch (e) {
       if (!(e instanceof LockedError)) setError("Couldn't load your saved progress.");
@@ -157,11 +173,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         username?: string;
         role?: UserRole;
         pathId?: PathId | null;
+        ratingsNoticeSeen?: boolean;
         expiresAt?: number;
       };
       if (!res.ok) return data.error ?? "Couldn't log in.";
       if (!data.userId || !data.username || !data.role) return "Unexpected server response.";
-      const u: User = { id: data.userId, username: data.username, role: data.role, pathId: data.pathId ?? null };
+      const u: User = {
+        id: data.userId,
+        username: data.username,
+        role: data.role,
+        pathId: data.pathId ?? null,
+        ratingsNoticeSeen: data.ratingsNoticeSeen ?? false,
+      };
       setUser(u);
       setExpiresAt(data.expiresAt ?? null);
       setStatus(u.pathId ? "unlocked" : "path-pending");
@@ -214,6 +237,31 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     },
     [api, progress],
   );
+
+  const rateTitle = useCallback(
+    (titleId: string, rating: number | null) => {
+      const previous = ratings[titleId] ?? NO_RATING;
+      const mineBefore = previous.mine;
+      let totalBefore = (previous.average ?? 0) * previous.count;
+      if (mineBefore !== null) totalBefore -= mineBefore;
+      const countAfter = previous.count - (mineBefore !== null ? 1 : 0) + (rating !== null ? 1 : 0);
+      const totalAfter = totalBefore + (rating ?? 0);
+      const next: TitleRating = { average: countAfter > 0 ? totalAfter / countAfter : null, count: countAfter, mine: rating };
+      setRatings((cur) => ({ ...cur, [titleId]: next }));
+
+      api("/api/ratings", { method: "POST", body: JSON.stringify({ titleId, rating }) }).catch((e) => {
+        if (e instanceof LockedError) return;
+        setRatings((cur) => ({ ...cur, [titleId]: previous }));
+        setError("Couldn't save that rating. Check your connection and try again.");
+      });
+    },
+    [api, ratings],
+  );
+
+  const dismissRatingsNotice = useCallback(() => {
+    setUser((u) => (u ? { ...u, ratingsNoticeSeen: true } : u));
+    api("/api/session/rating-notice", { method: "POST" }).catch(() => {});
+  }, [api]);
 
   const saveSchedule = useCallback(
     async (name: string, schedule: GeneratedSchedule) => {
@@ -276,6 +324,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       isWatched: (pathId, titleId) => titleId in (progress[pathId] ?? NO_PROGRESS),
       watchedFor: (pathId) => progress[pathId] ?? NO_PROGRESS,
       setWatched,
+      ratingFor: (titleId) => ratings[titleId] ?? NO_RATING,
+      rateTitle,
+      dismissRatingsNotice,
       schedules,
       saveSchedule,
       updateSchedule,
@@ -283,7 +334,24 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       error,
       clearError: () => setError(null),
     }),
-    [status, user, login, selectPath, lock, dataReady, progress, setWatched, schedules, saveSchedule, updateSchedule, deleteSchedule, error],
+    [
+      status,
+      user,
+      login,
+      selectPath,
+      lock,
+      dataReady,
+      progress,
+      setWatched,
+      ratings,
+      rateTitle,
+      dismissRatingsNotice,
+      schedules,
+      saveSchedule,
+      updateSchedule,
+      deleteSchedule,
+      error,
+    ],
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

@@ -2,6 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { useApp } from "@/components/app-provider";
+import { getPath } from "@/lib/paths";
+import type { PathId } from "@/lib/types";
+
+const PATH_ABBR: Record<PathId, string> = {
+  "new-to-marvel": "NTM",
+  "prepare-for-doomsday": "PFD",
+  "rewatch-essentials": "RE",
+};
 
 interface User {
   id: string;
@@ -9,6 +17,8 @@ interface User {
   role: string;
   path_id: string | null;
   created_at: string;
+  watched: number | null;
+  total: number | null;
 }
 
 export default function UsersPage() {
@@ -64,6 +74,7 @@ export default function UsersPage() {
                 <th className="px-4 py-3 font-display font-semibold">Username</th>
                 <th className="px-4 py-3 font-display font-semibold">Role</th>
                 <th className="px-4 py-3 font-display font-semibold">Path</th>
+                <th className="px-4 py-3 font-display font-semibold">Status</th>
                 <th className="px-4 py-3 font-display font-semibold">Joined</th>
                 <th className="px-4 py-3"></th>
               </tr>
@@ -80,7 +91,24 @@ export default function UsersPage() {
                       {u.role}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-muted">{u.path_id ?? <span className="italic">not chosen</span>}</td>
+                  <td className="px-4 py-3 text-muted">
+                    {u.path_id ? (
+                      <span title={getPath(u.path_id)?.name ?? u.path_id}>
+                        {PATH_ABBR[u.path_id as PathId] ?? u.path_id}
+                      </span>
+                    ) : (
+                      <span className="italic">not chosen</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-muted">
+                    {u.total ? (
+                      <span title={`${u.watched} watched, ${u.total - (u.watched ?? 0)} left`}>
+                        {u.watched}/{u.total} watched
+                      </span>
+                    ) : (
+                      <span className="italic">—</span>
+                    )}
+                  </td>
                   <td className="px-4 py-3 text-muted">{new Date(u.created_at).toLocaleDateString()}</td>
                   <td className="px-4 py-3 text-right">
                     {u.id !== user?.id && (
@@ -98,7 +126,7 @@ export default function UsersPage() {
               ))}
               {users.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-4 py-6 text-center text-muted">No users found.</td>
+                  <td colSpan={6} className="px-4 py-6 text-center text-muted">No users found.</td>
                 </tr>
               )}
             </tbody>

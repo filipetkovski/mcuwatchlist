@@ -20,10 +20,13 @@ export function createSessionToken(
   username: string,
   role: UserRole,
   pathId: PathId | null,
+  ratingsNoticeSeen: boolean,
   now = Date.now(),
 ): { token: string; expiresAt: number } {
   const expiresAt = now + SESSION_TTL_SECONDS * 1000;
-  const payload = Buffer.from(JSON.stringify({ exp: expiresAt, userId, username, role, pathId })).toString("base64url");
+  const payload = Buffer.from(
+    JSON.stringify({ exp: expiresAt, userId, username, role, pathId, ratingsNoticeSeen }),
+  ).toString("base64url");
   return { token: `${payload}.${sign(payload)}`, expiresAt };
 }
 
@@ -36,7 +39,7 @@ export function readSessionToken(token: string | undefined | null, now = Date.no
   if (expected.length !== given.length || !timingSafeEqual(expected, given)) return null;
   try {
     const d = JSON.parse(Buffer.from(payload, "base64url").toString()) as {
-      exp?: unknown; userId?: unknown; username?: unknown; role?: unknown; pathId?: unknown;
+      exp?: unknown; userId?: unknown; username?: unknown; role?: unknown; pathId?: unknown; ratingsNoticeSeen?: unknown;
     };
     if (typeof d.exp !== "number" || d.exp <= now) return null;
     if (typeof d.userId !== "string" || typeof d.username !== "string") return null;
@@ -46,6 +49,7 @@ export function readSessionToken(token: string | undefined | null, now = Date.no
       username: d.username,
       role: d.role,
       pathId: (d.pathId as PathId) ?? null,
+      ratingsNoticeSeen: d.ratingsNoticeSeen === true,
       expiresAt: d.exp,
     };
   } catch {

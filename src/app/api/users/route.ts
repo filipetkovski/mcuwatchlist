@@ -2,7 +2,11 @@ import { NextResponse, type NextRequest } from "next/server";
 import { hashPassword } from "@/lib/password";
 import { guard } from "@/lib/session";
 import { admin } from "@/lib/supabase/admin";
-import type { UserRole } from "@/lib/types";
+import { titlesForScope } from "@/lib/paths";
+import { getTitles } from "@/lib/titles";
+import type { PathId, UserRole } from "@/lib/types";
+
+const PAGE = 1000;
 
 export async function GET() {
   const g = await guard();
@@ -19,7 +23,43 @@ export async function GET() {
     .select("id, username, role, path_id, created_at")
     .order("created_at", { ascending: true });
   if (error) return NextResponse.json({ error: "Couldn't load users." }, { status: 500 });
-  return NextResponse.json({ users: data });
+
+  const userIds = data.map((u) => u.id);
+  const pathIds = [...new Set(data.map((u) => u.path_id).filter((p): p is string => !!p))];
+
+  const watchedCounts: Record<string, number> = {};
+  if (userIds.length > 0 && pathIds.length > 0) {
+    for (let from = 0; ; from += PAGE) {
+      const { data: rows, error: progError } = await db
+        .from("path_progress")
+        .select("user_id, path_id, title_id")
+        .in("user_id", userIds)
+        .in("path_id", pathIds)
+        .range(from, from + PAGE - 1);
+      if (progError) return NextResponse.json({ error: "Couldn't load progress." }, { status: 500 });
+      for (const row of rows) {
+        const key = `${row.user_id}:${row.path_id}`;
+        watchedCounts[key] = (watchedCounts[key] ?? 0) + 1;
+      }
+      if (rows.length < PAGE) break;
+    }
+  }
+
+  const titles = await getTitles();
+  const totalsByPath = new Map<string, number>();
+
+  const users = data.map((u) => {
+    if (!u.path_id) return { ...u, watched: null, total: null };
+    let total = totalsByPath.get(u.path_id);
+    if (total === undefined) {
+      total = titlesForScope(titles, u.path_id as PathId).length;
+      totalsByPath.set(u.path_id, total);
+    }
+    const watched = watchedCounts[`${u.id}:${u.path_id}`] ?? 0;
+    return { ...u, watched, total };
+  });
+
+  return NextResponse.json({ users });
 }
 
 export async function POST(req: NextRequest) {

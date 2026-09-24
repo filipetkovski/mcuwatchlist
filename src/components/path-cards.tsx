@@ -16,8 +16,7 @@ export function PathCards({ titles }: { titles: Title[] }) {
   return (
     <ul className="grid gap-4 md:grid-cols-3">
       {PATHS.map((path) => {
-        // "new-to-marvel" shows all titles in the watch order (MCU + non-MCU), match that here.
-        const list = path.id === "new-to-marvel" ? titles : titles.filter(path.include);
+        const list = titles.filter(path.include);
         const watchedMap = watchedFor(path.id);
         const watched = list.filter((t) => t.id in watchedMap).length;
         const minutes = list.reduce((sum, t) => sum + t.runtime_minutes, 0);

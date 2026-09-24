@@ -18,8 +18,8 @@ export const PATHS: PathDef[] = [
     name: "New to Marvel",
     tagline: "Start from zero, skip nothing.",
     description:
-      "Every film, series and special from Marvel Studios in one continuous run. The full journey, in the order you pick.",
-    include: (t) => t.universe === "mcu",
+      "Every film, series and special in one continuous run - Marvel Studios plus the pre-MCU Spider-Man and X-Men films. The full journey, in the order you pick.",
+    include: () => true,
   },
   {
     id: "prepare-for-doomsday",
@@ -45,7 +45,7 @@ export const PATHS: PathDef[] = [
 ];
 
 export const SCOPE_LABELS: Record<ScopeId, string> = {
-  "new-to-marvel": "All MCU titles",
+  "new-to-marvel": "All titles",
   "prepare-for-doomsday": "Prepare for Doomsday",
   "rewatch-essentials": "Rewatch the Essentials",
 };

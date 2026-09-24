@@ -5,11 +5,12 @@ import { useState } from "react";
 import { formatRuntime, releaseYear } from "@/lib/format";
 import { PATHS } from "@/lib/paths";
 import { isXMenTitle, sortTitles } from "@/lib/titles";
-import type { Importance, OrderType, PathId, Title, TitleType } from "@/lib/types";
+import type { Importance, OrderType, PathId, Title, TitleRating, TitleType } from "@/lib/types";
 import { useApp } from "./app-provider";
 import { DoomsdayBadge, ImportanceBadge } from "./badges";
 import { Dashboard } from "./dashboard";
 import { ProgressNotices } from "./progress-notices";
+import { RateModal } from "./rate-modal";
 
 interface Props {
   titles: Title[];
@@ -39,7 +40,7 @@ function toggleIn<T>(set: Set<T>, value: T): Set<T> {
 }
 
 export function TitleExplorer({ titles, initialOrder, orderBasePath }: Props) {
-  const { isWatched, setWatched, user } = useApp();
+  const { isWatched, setWatched, ratingFor, rateTitle, user } = useApp();
   const [order, setOrder] = useState<OrderType>(initialOrder);
   const [types, setTypes] = useState<Set<TitleType>>(new Set());
   const [importances, setImportances] = useState<Set<Importance>>(new Set());
@@ -48,10 +49,20 @@ export function TitleExplorer({ titles, initialOrder, orderBasePath }: Props) {
   const [query, setQuery] = useState("");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [skipped, setSkipped] = useState<Set<string>>(new Set());
+  const [ratingPrompt, setRatingPrompt] = useState<{ title: Title; revertOnCancel: boolean } | null>(null);
 
   const activePathId: string = user?.pathId ?? DEFAULT_PATH;
   const pathDef = PATHS.find((p) => p.id === activePathId);
   const isAllMcuPath = activePathId === DEFAULT_PATH;
+
+  const toggleWatched = (t: Title, value: boolean) => {
+    setWatched(activePathId, [t.id], value);
+    if (value) {
+      if (ratingFor(t.id).mine === null) setRatingPrompt({ title: t, revertOnCancel: true });
+    } else if (ratingFor(t.id).mine !== null) {
+      rateTitle(t.id, null);
+    }
+  };
 
   const scoped = sortTitles(
     isAllMcuPath
@@ -168,11 +179,24 @@ export function TitleExplorer({ titles, initialOrder, orderBasePath }: Props) {
               position={positions.get(t.id) ?? 0}
               watched={watchedIn(t.id)}
               skipped={skipped.has(t.id)}
-              onToggle={(value) => setWatched(activePathId, [t.id], value)}
+              rating={ratingFor(t.id)}
+              onToggle={(value) => toggleWatched(t, value)}
               onSkip={() => setSkipped((prev) => { const next = new Set(prev); if (next.has(t.id)) next.delete(t.id); else next.add(t.id); return next; })}
+              onRate={() => setRatingPrompt({ title: t, revertOnCancel: false })}
             />
           ))}
         </ol>
+      )}
+
+      {ratingPrompt && (
+        <RateModal
+          title={ratingPrompt.title}
+          onClose={() => setRatingPrompt(null)}
+          onCancel={() => {
+            if (ratingPrompt.revertOnCancel) setWatched(activePathId, [ratingPrompt.title.id], false);
+            setRatingPrompt(null);
+          }}
+        />
       )}
     </div>
   );
@@ -259,16 +283,21 @@ function TitleRow({
   position,
   watched,
   skipped,
+  rating,
   onToggle,
   onSkip,
+  onRate,
 }: {
   title: Title;
   position: number;
   watched: boolean;
   skipped: boolean;
+  rating: TitleRating;
   onToggle: (watched: boolean) => void;
   onSkip: () => void;
+  onRate: () => void;
 }) {
+  const showRateButton = watched && !skipped && rating.mine === null;
   const rowStyle = watched
     ? { borderColor: "#1f8a4f", backgroundColor: "rgb(31 138 79 / 0.4)" }
     : skipped
@@ -307,8 +336,11 @@ function TitleRow({
       </div>
       <div className="flex min-w-0 flex-1 items-center py-2 pl-3 pr-2 sm:py-2.5 sm:pl-4 sm:pr-2.5">
         <div className="min-w-0 flex-1">
-          <span className={`block font-display text-base font-semibold leading-snug sm:text-lg ${watched || skipped ? "line-through decoration-muted" : ""}`}>
-            {t.title}
+          <span className="flex flex-wrap items-center gap-2">
+            <span className={`font-display text-base font-semibold leading-snug sm:text-lg ${watched || skipped ? "line-through decoration-muted" : ""}`}>
+              {t.title}
+            </span>
+            <RatingBadge rating={rating} />
           </span>
           <span className="mt-0.5 block text-xs text-muted sm:text-sm">
             {TYPE_LABEL[t.type]} · {releaseYear(t.release_date)} · {formatRuntime(t.runtime_minutes)}
@@ -333,8 +365,42 @@ function TitleRow({
             {skipped ? "UNDO" : "SKIP!"}
           </button>
         )}
+        {showRateButton && (
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onRate(); }}
+            aria-label={`Rate ${t.title}`}
+            className="ml-3 shrink-0 rounded border-2 border-black bg-violet px-2.5 py-1 font-display text-xs font-black uppercase tracking-wide text-white shadow-[2px_2px_0_#000] transition-colors hover:bg-violet/80"
+          >
+            Rate
+          </button>
+        )}
       </div>
     </li>
+  );
+}
+
+function RatingBadge({ rating }: { rating: TitleRating }) {
+  if (rating.count === 0 || rating.average === null) {
+    return (
+      <span
+        title="Not rated yet"
+        className="inline-flex shrink-0 items-center whitespace-nowrap rounded-full border-2 border-black bg-surface-2 px-2.5 py-1 font-mono text-xs font-medium text-muted shadow-[2px_2px_0_#000]"
+      >
+        Not rated yet
+      </span>
+    );
+  }
+  return (
+    <span
+      title={`${rating.average.toFixed(1)} average from ${rating.count} rating${rating.count === 1 ? "" : "s"}`}
+      className="inline-flex shrink-0 items-center gap-1 rounded-full border-2 border-black bg-yellow-400 px-2.5 py-1 font-mono text-sm font-bold tabular-nums text-black shadow-[2px_2px_0_#000]"
+    >
+      ★ {rating.average.toFixed(1)}
+      <span className="font-normal text-black/70">
+        ({rating.count} rating{rating.count === 1 ? "" : "s"})
+      </span>
+    </span>
   );
 }
 
