@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { Title } from "@/lib/types";
+import type { Title, TitleRating } from "@/lib/types";
 import { useApp } from "./app-provider";
 
 export function RateModal({
@@ -14,7 +14,8 @@ export function RateModal({
   onCancel: () => void;
 }) {
   const { ratingFor, rateTitle } = useApp();
-  const mine = ratingFor(title.id).mine;
+  const rating = ratingFor(title.id);
+  const mine = rating.mine;
   const [value, setValue] = useState(mine ?? 3);
 
   const confirm = () => {
@@ -40,7 +41,7 @@ export function RateModal({
         </h2>
         <p className="mt-1 text-center text-base font-semibold text-ink">{title.title}</p>
 
-        <ModalPoster title={title} />
+        <ModalPoster title={title} rating={rating} />
 
         <div className="mt-6 flex flex-col items-center gap-4">
           <span className="flex items-center gap-2 font-mono text-4xl font-bold tabular-nums">
@@ -75,17 +76,7 @@ export function RateModal({
   );
 }
 
-function ModalPoster({ title }: { title: Title }) {
-  if (title.poster_url) {
-    return (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
-        src={title.poster_url}
-        alt=""
-        className="mx-auto mt-4 h-48 w-32 rounded-lg border-2 border-black object-cover shadow-[3px_3px_0_#000]"
-      />
-    );
-  }
+function ModalPoster({ title, rating }: { title: Title; rating: TitleRating }) {
   const initials = title.title
     .replace(/[^A-Za-z0-9 ]/g, "")
     .split(" ")
@@ -94,12 +85,39 @@ function ModalPoster({ title }: { title: Title }) {
     .map((w) => w[0])
     .join("")
     .toUpperCase();
+
   return (
-    <div
-      aria-hidden="true"
-      className="mx-auto mt-4 flex h-48 w-32 items-center justify-center rounded-lg border-2 border-black bg-gradient-to-br from-surface-2 to-line font-display text-2xl font-bold text-muted shadow-[3px_3px_0_#000]"
-    >
-      {initials || "M"}
+    <div className="relative mx-auto mt-4 h-48 w-32">
+      {title.poster_url ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={title.poster_url}
+          alt=""
+          className="h-full w-full rounded-lg border-2 border-black object-cover shadow-[3px_3px_0_#000]"
+        />
+      ) : (
+        <div
+          aria-hidden="true"
+          className="flex h-full w-full items-center justify-center rounded-lg border-2 border-black bg-gradient-to-br from-surface-2 to-line font-display text-2xl font-bold text-muted shadow-[3px_3px_0_#000]"
+        >
+          {initials || "M"}
+        </div>
+      )}
+      {rating.count === 0 || rating.average === null ? (
+        <span
+          title="N/A"
+          className="absolute right-1 top-1 flex h-5 items-center rounded-full border-2 border-black bg-surface-2 px-1.5 font-mono text-[10px] font-medium text-muted shadow-[2px_2px_0_#000]"
+        >
+          N/A
+        </span>
+      ) : (
+        <span
+          title={`${rating.average.toFixed(1)} average from ${rating.count} rating${rating.count === 1 ? "" : "s"}`}
+          className="absolute right-1 top-1 flex h-5 items-center gap-0.5 rounded-full border-2 border-black bg-yellow-400 px-1.5 font-mono text-[10px] font-bold tabular-nums text-black shadow-[2px_2px_0_#000]"
+        >
+          ★ {rating.average.toFixed(1)}
+        </span>
+      )}
     </div>
   );
 }

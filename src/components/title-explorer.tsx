@@ -333,14 +333,12 @@ function TitleRow({
         <span className="absolute left-1 top-1 flex h-5 w-5 items-center justify-center rounded-full border-2 border-black bg-surface-2 font-mono text-[10px] tabular-nums text-muted shadow-[2px_2px_0_#000]">
           {position}
         </span>
+        <RatingBadge rating={rating} />
       </div>
       <div className="flex min-w-0 flex-1 items-center py-2 pl-3 pr-2 sm:py-2.5 sm:pl-4 sm:pr-2.5">
         <div className="min-w-0 flex-1">
-          <span className="flex flex-wrap items-center gap-2">
-            <span className={`font-display text-base font-semibold leading-snug sm:text-lg ${watched || skipped ? "line-through decoration-muted" : ""}`}>
-              {t.title}
-            </span>
-            <RatingBadge rating={rating} />
+          <span className={`block font-display text-base font-semibold leading-snug sm:text-lg ${watched || skipped ? "line-through decoration-muted" : ""}`}>
+            {t.title}
           </span>
           <span className="mt-0.5 block text-xs text-muted sm:text-sm">
             {TYPE_LABEL[t.type]} · {releaseYear(t.release_date)} · {formatRuntime(t.runtime_minutes)}
@@ -384,22 +382,19 @@ function RatingBadge({ rating }: { rating: TitleRating }) {
   if (rating.count === 0 || rating.average === null) {
     return (
       <span
-        title="Not rated yet"
-        className="inline-flex shrink-0 items-center whitespace-nowrap rounded-full border-2 border-black bg-surface-2 px-2.5 py-1 font-mono text-xs font-medium text-muted shadow-[2px_2px_0_#000]"
+        title="N/A"
+        className="absolute right-1 top-1 flex h-5 items-center rounded-full border-2 border-black bg-surface-2 px-1.5 font-mono text-[10px] font-medium text-muted shadow-[2px_2px_0_#000]"
       >
-        Not rated yet
+        N/A
       </span>
     );
   }
   return (
     <span
       title={`${rating.average.toFixed(1)} average from ${rating.count} rating${rating.count === 1 ? "" : "s"}`}
-      className="inline-flex shrink-0 items-center gap-1 rounded-full border-2 border-black bg-yellow-400 px-2.5 py-1 font-mono text-sm font-bold tabular-nums text-black shadow-[2px_2px_0_#000]"
+      className="absolute right-1 top-1 flex h-5 items-center gap-0.5 rounded-full border-2 border-black bg-yellow-400 px-1.5 font-mono text-[10px] font-bold tabular-nums text-black shadow-[2px_2px_0_#000]"
     >
       ★ {rating.average.toFixed(1)}
-      <span className="font-normal text-black/70">
-        ({rating.count} rating{rating.count === 1 ? "" : "s"})
-      </span>
     </span>
   );
 }
