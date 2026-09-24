@@ -220,47 +220,47 @@ export default function TicTacToePage() {
           <section className="comic-panel p-4">
             <h2 className="font-display text-xl font-semibold">Leaderboard</h2>
             <div className="comic-scroll mt-3 overflow-x-auto pb-3">
-              <table className="w-full min-w-[760px] text-sm">
+              <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b-2 border-black text-left">
-                    <th className="py-2 pr-4 font-display font-semibold">#</th>
-                    <th className="py-2 pr-1.5 font-display font-semibold"></th>
-                    <th className="py-2 pr-1.5 font-display font-semibold">Player</th>
-                    <th className="py-2 pr-4 font-display font-semibold">
-                      <span className="flex items-center gap-1.5">
+                    <th className="whitespace-nowrap py-2 pr-1.5 font-display font-semibold">#</th>
+                    <th className="whitespace-nowrap py-2 pr-1 font-display font-semibold"></th>
+                    <th className="whitespace-nowrap py-2 pr-1 font-display font-semibold">Player</th>
+                    <th className="whitespace-nowrap py-2 pr-2 font-display font-semibold">
+                      <span title="Vibraniums">
                         <VibraniumIcon className="h-4 w-4" />
-                        Vibraniums
+                        <span className="sr-only">Vibraniums</span>
                       </span>
                     </th>
-                    <th className="py-2 pr-4 font-display font-semibold">W</th>
-                    <th className="py-2 pr-4 font-display font-semibold">L</th>
-                    <th className="py-2 font-display font-semibold">D</th>
+                    <th className="whitespace-nowrap py-2 pr-2 font-display font-semibold">W</th>
+                    <th className="whitespace-nowrap py-2 pr-2 font-display font-semibold">L</th>
+                    <th className="whitespace-nowrap py-2 font-display font-semibold">D</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-line">
                   {data.leaderboard.map((row, i) => (
                     <tr key={row.id} className={row.id === user?.id ? "bg-surface-2/60" : undefined}>
-                      <td className="py-2 pr-4 text-muted">{i + 1}</td>
-                      <td className="py-2 pr-1.5">
+                      <td className="whitespace-nowrap py-2 pr-1.5 text-muted">{i + 1}</td>
+                      <td className="whitespace-nowrap py-2 pr-1">
                         {row.id !== user?.id && !hasGameInProgress && (
                           <button
                             type="button"
                             disabled={busyId === row.id}
                             onClick={() => void invite(row.id)}
-                            className="comic-btn rounded-lg bg-violet px-3 py-1.5 text-xs text-white disabled:opacity-60"
+                            className="comic-btn rounded-md bg-violet px-1.5 py-1 text-[10px] text-white disabled:opacity-60"
                           >
                             Challenge
                           </button>
                         )}
                       </td>
-                      <td className="py-2 pr-1.5 font-medium">
+                      <td className="whitespace-nowrap py-2 pr-1 font-medium">
                         {row.username}
-                        {row.id === user?.id && <span className="ml-2 text-xs text-muted">(you)</span>}
+                        {row.id === user?.id && <span className="ml-1 text-xs text-muted">(you)</span>}
                       </td>
-                      <td className="py-2 pr-4 font-mono font-bold tabular-nums">{row.vibranium}</td>
-                      <td className="py-2 pr-4 tabular-nums text-muted">{row.wins}</td>
-                      <td className="py-2 pr-4 tabular-nums text-muted">{row.losses}</td>
-                      <td className="py-2 tabular-nums text-muted">{row.draws}</td>
+                      <td className="whitespace-nowrap py-2 pr-2 font-mono font-bold tabular-nums">{row.vibranium}</td>
+                      <td className="whitespace-nowrap py-2 pr-2 tabular-nums text-muted">{row.wins}</td>
+                      <td className="whitespace-nowrap py-2 pr-2 tabular-nums text-muted">{row.losses}</td>
+                      <td className="whitespace-nowrap py-2 tabular-nums text-muted">{row.draws}</td>
                     </tr>
                   ))}
                 </tbody>
