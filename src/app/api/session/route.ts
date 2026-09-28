@@ -24,6 +24,7 @@ export async function GET() {
     pathId: session.pathId,
     ratingsNoticeSeen: session.ratingsNoticeSeen,
     ticTacToeNoticeSeen: session.ticTacToeNoticeSeen,
+    draftNoticeSeen: session.draftNoticeSeen,
     expiresAt: session.expiresAt,
   });
 }
@@ -49,7 +50,7 @@ export async function POST(req: NextRequest) {
 
   const { data, error } = await db
     .from("users")
-    .select("id, username, password_hash, role, path_id, ratings_notice_seen, tic_tac_toe_notice_seen")
+    .select("id, username, password_hash, role, path_id, ratings_notice_seen, tic_tac_toe_notice_seen, draft_notice_seen")
     .eq("username", username)
     .maybeSingle();
   if (error) return NextResponse.json({ error: "Couldn't check credentials. Is the database set up?" }, { status: 503 });
@@ -69,6 +70,7 @@ export async function POST(req: NextRequest) {
   misses.delete(key);
   const ratingsNoticeSeen = data.ratings_notice_seen === true;
   const ticTacToeNoticeSeen = data.tic_tac_toe_notice_seen === true;
+  const draftNoticeSeen = data.draft_notice_seen === true;
   const { token, expiresAt } = createSessionToken(
     data.id,
     data.username,
@@ -76,6 +78,7 @@ export async function POST(req: NextRequest) {
     (data.path_id as PathId) ?? null,
     ratingsNoticeSeen,
     ticTacToeNoticeSeen,
+    draftNoticeSeen,
   );
   return withSessionCookie(
     NextResponse.json({
@@ -86,6 +89,7 @@ export async function POST(req: NextRequest) {
       pathId: data.path_id ?? null,
       ratingsNoticeSeen,
       ticTacToeNoticeSeen,
+      draftNoticeSeen,
       expiresAt,
     }),
     token,

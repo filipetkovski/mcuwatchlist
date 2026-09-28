@@ -22,11 +22,12 @@ export function createSessionToken(
   pathId: PathId | null,
   ratingsNoticeSeen: boolean,
   ticTacToeNoticeSeen: boolean,
+  draftNoticeSeen: boolean,
   now = Date.now(),
 ): { token: string; expiresAt: number } {
   const expiresAt = now + SESSION_TTL_SECONDS * 1000;
   const payload = Buffer.from(
-    JSON.stringify({ exp: expiresAt, userId, username, role, pathId, ratingsNoticeSeen, ticTacToeNoticeSeen }),
+    JSON.stringify({ exp: expiresAt, userId, username, role, pathId, ratingsNoticeSeen, ticTacToeNoticeSeen, draftNoticeSeen }),
   ).toString("base64url");
   return { token: `${payload}.${sign(payload)}`, expiresAt };
 }
@@ -41,7 +42,7 @@ export function readSessionToken(token: string | undefined | null, now = Date.no
   try {
     const d = JSON.parse(Buffer.from(payload, "base64url").toString()) as {
       exp?: unknown; userId?: unknown; username?: unknown; role?: unknown; pathId?: unknown;
-      ratingsNoticeSeen?: unknown; ticTacToeNoticeSeen?: unknown;
+      ratingsNoticeSeen?: unknown; ticTacToeNoticeSeen?: unknown; draftNoticeSeen?: unknown;
     };
     if (typeof d.exp !== "number" || d.exp <= now) return null;
     if (typeof d.userId !== "string" || typeof d.username !== "string") return null;
@@ -53,6 +54,7 @@ export function readSessionToken(token: string | undefined | null, now = Date.no
       pathId: (d.pathId as PathId) ?? null,
       ratingsNoticeSeen: d.ratingsNoticeSeen === true,
       ticTacToeNoticeSeen: d.ticTacToeNoticeSeen === true,
+      draftNoticeSeen: d.draftNoticeSeen === true,
       expiresAt: d.exp,
     };
   } catch {

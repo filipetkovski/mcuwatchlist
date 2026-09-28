@@ -3,6 +3,7 @@ import { CaptainAmericaShield } from "@/components/captain-america-shield";
 import { Countdown } from "@/components/countdown";
 import { PathCards } from "@/components/path-cards";
 import { TicTacToeIcon } from "@/components/tic-tac-toe-icon";
+import { DraftIcon } from "@/components/draft-icon";
 import { getTitles } from "@/lib/titles";
 
 export const revalidate = 3600;
@@ -53,7 +54,7 @@ export default async function HomePage() {
         <h2 id="games-heading" className="font-display text-2xl font-semibold">
           Games
         </h2>
-        <ul className="grid gap-4">
+        <ul className="grid gap-4 md:grid-cols-2">
           <li>
             <Link
               href="/tic-tac-toe"
@@ -65,6 +66,20 @@ export default async function HomePage() {
               <p className="relative mt-1 text-sm font-medium text-[#e4d4ff]">Challenge another fan to a match.</p>
               <p className="relative mt-2 flex-1 text-sm text-white/90">
                 Play tic-tac-toe against someone else on the site, answering Marvel trivia to earn each move.
+              </p>
+            </Link>
+          </li>
+          <li>
+            <Link
+              href="/draft"
+              className="relative flex min-h-56 flex-col overflow-hidden comic-panel p-5 transition-transform hover:-translate-y-0.5"
+              style={{ background: "linear-gradient(160deg, #d22030 0%, #8f0d1a 55%, #4a0710 100%)" }}
+            >
+              <DraftIcon className="pointer-events-none absolute -bottom-6 -right-6 h-40 w-40 select-none opacity-40" />
+              <h3 className="relative font-display text-xl font-semibold">Draft</h3>
+              <p className="relative mt-1 text-sm font-medium text-[#ffcf6b]">Bid your $20 on heroes and villains.</p>
+              <p className="relative mt-2 flex-1 text-sm text-white/90">
+                Take turns bidding for 10 characters. Whoever&apos;s 5 picks add up to the most power wins the draft.
               </p>
             </Link>
           </li>

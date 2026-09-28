@@ -29,6 +29,7 @@ export async function POST(req: NextRequest) {
     pathId,
     session.ratingsNoticeSeen,
     session.ticTacToeNoticeSeen,
+    session.draftNoticeSeen,
   );
   return withSessionCookie(NextResponse.json({ ok: true, pathId, expiresAt }), token);
 }

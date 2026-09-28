@@ -7,6 +7,7 @@ export interface UserSession {
   pathId: PathId | null;
   ratingsNoticeSeen: boolean;
   ticTacToeNoticeSeen: boolean;
+  draftNoticeSeen: boolean;
   expiresAt: number;
 }
 
@@ -143,4 +144,41 @@ export interface LeaderboardEntry {
   wins: number;
   losses: number;
   draws: number;
+}
+
+export type DraftAlignment = "hero" | "villain";
+
+export interface DraftCharacter {
+  id: string;
+  name: string;
+  alignment: DraftAlignment;
+  /** 1-100 - shown for flavor and used to decide the winner when the draft ends. */
+  power: number;
+}
+
+/** One of the 10 characters up for bid in a draft game, once picked. */
+export interface DraftPick {
+  characterId: string;
+  /** What the winner paid for it - 0 when it was handed over for free or auto-assigned. */
+  price: number;
+}
+
+export interface DraftGame {
+  id: string;
+  playerX: GamePlayer;
+  playerO: GamePlayer;
+  status: GameStatus;
+  /** The 10 characters in this game, in reveal order. */
+  characterIds: string[];
+  /** Index into characterIds of the one currently up for bid (or characterIds.length once done). */
+  round: number;
+  turn: string | null;
+  currentBid: number;
+  currentBidder: string | null;
+  budgets: { x: number; o: number };
+  picks: { x: DraftPick[]; o: DraftPick[] };
+  winner: string | null;
+  result: GameResult | null;
+  createdAt: string;
+  updatedAt: string;
 }

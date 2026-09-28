@@ -12,6 +12,7 @@ interface User {
   pathId: PathId | null;
   ratingsNoticeSeen: boolean;
   ticTacToeNoticeSeen: boolean;
+  draftNoticeSeen: boolean;
 }
 
 interface AppContextValue {
@@ -28,6 +29,7 @@ interface AppContextValue {
   rateTitle: (titleId: string, rating: number | null) => void;
   dismissRatingsNotice: () => void;
   dismissTicTacToeNotice: () => void;
+  dismissDraftNotice: () => void;
   schedules: SavedSchedule[];
   saveSchedule: (name: string, schedule: GeneratedSchedule) => Promise<SavedSchedule | null>;
   updateSchedule: (id: string, schedule: GeneratedSchedule) => Promise<boolean>;
@@ -98,6 +100,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         pathId?: PathId | null;
         ratingsNoticeSeen?: boolean;
         ticTacToeNoticeSeen?: boolean;
+        draftNoticeSeen?: boolean;
         expiresAt?: number | null;
       };
       if (!data.configured) {
@@ -110,6 +113,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           pathId: data.pathId ?? null,
           ratingsNoticeSeen: data.ratingsNoticeSeen ?? false,
           ticTacToeNoticeSeen: data.ticTacToeNoticeSeen ?? false,
+          draftNoticeSeen: data.draftNoticeSeen ?? false,
         };
         setUser(u);
         setExpiresAt(data.expiresAt ?? null);
@@ -179,6 +183,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         pathId?: PathId | null;
         ratingsNoticeSeen?: boolean;
         ticTacToeNoticeSeen?: boolean;
+        draftNoticeSeen?: boolean;
         expiresAt?: number;
       };
       if (!res.ok) return data.error ?? "Couldn't log in.";
@@ -190,6 +195,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         pathId: data.pathId ?? null,
         ratingsNoticeSeen: data.ratingsNoticeSeen ?? false,
         ticTacToeNoticeSeen: data.ticTacToeNoticeSeen ?? false,
+        draftNoticeSeen: data.draftNoticeSeen ?? false,
       };
       setUser(u);
       setExpiresAt(data.expiresAt ?? null);
@@ -274,6 +280,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     api("/api/session/tic-tac-toe-notice", { method: "POST" }).catch(() => {});
   }, [api]);
 
+  const dismissDraftNotice = useCallback(() => {
+    setUser((u) => (u ? { ...u, draftNoticeSeen: true } : u));
+    api("/api/session/draft-notice", { method: "POST" }).catch(() => {});
+  }, [api]);
+
   const saveSchedule = useCallback(
     async (name: string, schedule: GeneratedSchedule) => {
       try {
@@ -339,6 +350,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       rateTitle,
       dismissRatingsNotice,
       dismissTicTacToeNotice,
+      dismissDraftNotice,
       schedules,
       saveSchedule,
       updateSchedule,
@@ -359,6 +371,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       rateTitle,
       dismissRatingsNotice,
       dismissTicTacToeNotice,
+      dismissDraftNotice,
       schedules,
       saveSchedule,
       updateSchedule,

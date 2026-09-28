@@ -20,6 +20,7 @@ export async function POST() {
     session.pathId,
     true,
     session.ticTacToeNoticeSeen,
+    session.draftNoticeSeen,
   );
   return withSessionCookie(NextResponse.json({ ok: true, expiresAt }), token);
 }
