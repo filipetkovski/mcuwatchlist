@@ -35,10 +35,6 @@ function characterOf(id: string) {
   return DRAFT_CHARACTERS.find((c) => c.id === id) ?? { id, name: "Unknown", alignment: "hero" as const, power: 0 };
 }
 
-function totalPower(picks: DraftPick[]): number {
-  return picks.reduce((sum, p) => sum + characterOf(p.characterId).power, 0);
-}
-
 /** Reveals newly-added picks one at a time instead of dumping them all in at once. */
 function useReveal(actualCount: number): number {
   const [visible, setVisible] = useState(actualCount);
@@ -158,7 +154,7 @@ export default function DraftGamePage() {
     setBusy(false);
   };
 
-  const minBid = opening ? 0 : game.currentBid + 1;
+  const minBid = opening ? (myBudget > 0 ? 1 : 0) : game.currentBid + 1;
   const canRaise = myBudget >= minBid;
 
   return (
@@ -293,27 +289,6 @@ export default function DraftGamePage() {
             </section>
           )}
 
-          {game.status === "finished" && (
-            <section className="comic-panel space-y-1 p-4 text-center">
-              {game.result === "draw" ? (
-                <>
-                  <p className="font-display text-2xl">It&apos;s a draw!</p>
-                  <p className="text-muted">Equal power. -10 vibraniums each.</p>
-                </>
-              ) : game.winner === user.id ? (
-                <>
-                  <p className="font-display text-2xl text-emerald-600">You won the draft!</p>
-                  <p className="text-muted">Your 5 picks had more power. +100 vibraniums.</p>
-                </>
-              ) : (
-                <>
-                  <p className="font-display text-2xl text-red-600">You lost the draft.</p>
-                  <p className="text-muted">{opponent.username}&apos;s picks had more power. -50 vibraniums.</p>
-                </>
-              )}
-            </section>
-          )}
-
           <section aria-label="Scoreboard" className="comic-panel grid grid-cols-2 divide-x-2 divide-black overflow-hidden">
             <PlayerColumn
               name={game.playerX.username}
@@ -321,7 +296,6 @@ export default function DraftGamePage() {
               budget={game.budgets.x}
               picks={game.picks.x}
               visibleCount={visibleX}
-              power={totalPower(game.picks.x)}
               showPower={game.status === "finished"}
             />
             <PlayerColumn
@@ -330,10 +304,38 @@ export default function DraftGamePage() {
               budget={game.budgets.o}
               picks={game.picks.o}
               visibleCount={visibleO}
-              power={totalPower(game.picks.o)}
               showPower={game.status === "finished"}
             />
           </section>
+
+          {game.status === "finished" && visibleX === game.picks.x.length && visibleO === game.picks.o.length && (
+            <>
+              <MatchupBreakdown
+                xName={game.playerX.username}
+                oName={game.playerO.username}
+                xPicks={game.picks.x}
+                oPicks={game.picks.o}
+              />
+              <section className="comic-panel space-y-1 p-4 text-center">
+                {game.result === "draw" ? (
+                  <>
+                    <p className="font-display text-2xl">It&apos;s a draw!</p>
+                    <p className="text-muted">Neither side won more matchups. -10 vibraniums each.</p>
+                  </>
+                ) : game.winner === user.id ? (
+                  <>
+                    <p className="font-display text-2xl text-emerald-600">You won the draft!</p>
+                    <p className="text-muted">Your picks dominated more matchups. +100 vibraniums.</p>
+                  </>
+                ) : (
+                  <>
+                    <p className="font-display text-2xl text-red-600">You lost the draft.</p>
+                    <p className="text-muted">{opponent.username}&apos;s picks won more matchups. -50 vibraniums.</p>
+                  </>
+                )}
+              </section>
+            </>
+          )}
         </>
       )}
     </div>
@@ -346,7 +348,6 @@ function PlayerColumn({
   budget,
   picks,
   visibleCount,
-  power,
   showPower,
 }: {
   name: string;
@@ -354,7 +355,6 @@ function PlayerColumn({
   budget: number;
   picks: DraftPick[];
   visibleCount: number;
-  power: number;
   showPower: boolean;
 }) {
   const shown = picks.slice(0, visibleCount);
@@ -366,7 +366,6 @@ function PlayerColumn({
           {isMe && <span className="ml-1.5 text-xs font-normal text-muted">(you)</span>}
         </p>
         <p className="font-mono text-2xl font-bold tabular-nums">${budget}</p>
-        {showPower && <p className="text-xs text-muted">⚡ {power} total power</p>}
       </div>
       <div className="flex flex-wrap gap-1.5" aria-label={`${name}'s picks`}>
         {shown.length === 0 && <span className="text-xs text-muted">No picks yet</span>}
@@ -386,5 +385,59 @@ function PlayerColumn({
         })}
       </div>
     </div>
+  );
+}
+
+function MatchupBreakdown({
+  xName,
+  oName,
+  xPicks,
+  oPicks,
+}: {
+  xName: string;
+  oName: string;
+  xPicks: DraftPick[];
+  oPicks: DraftPick[];
+}) {
+  const sorted = (picks: DraftPick[]) =>
+    [...picks].sort((a, b) => characterOf(b.characterId).power - characterOf(a.characterId).power);
+  const xSorted = sorted(xPicks);
+  const oSorted = sorted(oPicks);
+
+  let xWins = 0;
+  let oWins = 0;
+  const matchups = xSorted.map((xPick, i) => {
+    const oPick = oSorted[i];
+    const xChar = characterOf(xPick.characterId);
+    const oChar = characterOf(oPick.characterId);
+    const winner = xChar.power > oChar.power ? "x" : oChar.power > xChar.power ? "o" : "draw";
+    if (winner === "x") xWins++;
+    else if (winner === "o") oWins++;
+    return { xChar, oChar, winner };
+  });
+
+  return (
+    <section className="comic-panel space-y-3 p-4">
+      <h2 className="font-display text-xl font-semibold">Matchups</h2>
+      <ol className="space-y-2">
+        {matchups.map(({ xChar, oChar, winner }, i) => (
+          <li key={i} className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 rounded-lg border-2 border-black bg-surface-2 px-3 py-2 text-sm">
+            <span className={`text-right font-semibold ${winner === "x" ? "text-emerald-600" : winner === "o" ? "text-muted line-through" : ""}`}>
+              {xChar.name}
+              <span className="ml-1 font-mono text-xs font-normal">({xChar.power})</span>
+            </span>
+            <span className="shrink-0 text-xs font-bold text-muted">vs</span>
+            <span className={`font-semibold ${winner === "o" ? "text-emerald-600" : winner === "x" ? "text-muted line-through" : ""}`}>
+              {oChar.name}
+              <span className="ml-1 font-mono text-xs font-normal">({oChar.power})</span>
+            </span>
+          </li>
+        ))}
+      </ol>
+      <p className="text-center text-sm text-muted">
+        {xName}: <span className="font-semibold text-ink">{xWins}</span> win{xWins !== 1 ? "s" : ""} ·{" "}
+        {oName}: <span className="font-semibold text-ink">{oWins}</span> win{oWins !== 1 ? "s" : ""}
+      </p>
+    </section>
   );
 }

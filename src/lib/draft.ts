@@ -77,8 +77,25 @@ function powerOf(characterId: string): number {
   return DRAFT_CHARACTERS.find((c) => c.id === characterId)?.power ?? 0;
 }
 
-function totalPower(picks: DraftPick[]): number {
-  return picks.reduce((sum, p) => sum + powerOf(p.characterId), 0);
+function sortedByPowerDesc(picks: DraftPick[]): DraftPick[] {
+  return [...picks].sort((a, b) => powerOf(b.characterId) - powerOf(a.characterId));
+}
+
+/** Compares picks 1v1 after sorting by power. Returns who won more matchups. */
+function matchupWinner(xPicks: DraftPick[], oPicks: DraftPick[]): { result: "win" | "draw"; xWinner: boolean } {
+  const xSorted = sortedByPowerDesc(xPicks);
+  const oSorted = sortedByPowerDesc(oPicks);
+  let xWins = 0;
+  let oWins = 0;
+  for (let i = 0; i < Math.min(xSorted.length, oSorted.length); i++) {
+    const xPow = powerOf(xSorted[i].characterId);
+    const oPow = powerOf(oSorted[i].characterId);
+    if (xPow > oPow) xWins++;
+    else if (oPow > xPow) oWins++;
+  }
+  if (xWins > oWins) return { result: "win", xWinner: true };
+  if (oWins > xWins) return { result: "win", xWinner: false };
+  return { result: "draw", xWinner: false };
 }
 
 /**
@@ -90,7 +107,10 @@ export function validateBid(row: DraftGameRow, userId: string, amount: number): 
   if (!Number.isInteger(amount) || amount < 0) return "Invalid bid.";
   const budget = budgetOf(row, userId);
   if (amount > budget) return "You don't have that much money left.";
-  if (row.current_bidder === null) return null;
+  if (row.current_bidder === null) {
+    if (budget > 0 && amount === 0) return "You must bid at least $1.";
+    return null;
+  }
   if (amount <= row.current_bid) return "Your bid must beat the current bid - or pass.";
   return null;
 }
@@ -134,16 +154,9 @@ export async function applyPass(db: SupabaseClient, row: DraftGameRow): Promise<
 
     const xPicks = winnerId === row.player_x ? winnerPicks : loserPicks;
     const oPicks = winnerId === row.player_o ? winnerPicks : loserPicks;
-    const xPower = totalPower(xPicks);
-    const oPower = totalPower(oPicks);
-
-    if (xPower === oPower) {
-      fields.result = "draw";
-      fields.winner = null;
-    } else {
-      fields.result = "win";
-      fields.winner = xPower > oPower ? row.player_x : row.player_o;
-    }
+    const { result, xWinner } = matchupWinner(xPicks, oPicks);
+    fields.result = result;
+    fields.winner = result === "win" ? (xWinner ? row.player_x : row.player_o) : null;
   } else {
     fields.round = row.round + 1;
     fields.turn = starterFor(row, row.round + 1);
