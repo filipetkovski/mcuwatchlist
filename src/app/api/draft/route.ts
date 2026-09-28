@@ -11,18 +11,23 @@ export async function GET() {
 
   const { userId } = g.session;
 
-  const { data: users, error: usersError } = await db
-    .from("users")
-    .select("id, username, role, vibranium, draft_joined")
-    .order("username", { ascending: true });
+  const [
+    { data: users, error: usersError },
+    { data: games, error: gamesError },
+    { data: allFinishedGames, error: allGamesError },
+  ] = await Promise.all([
+    db.from("users").select("id, username, role, draft_joined").order("username", { ascending: true }),
+    db
+      .from("draft_games")
+      .select("id, player_x, player_o, status, turn, winner, result, created_at")
+      .or(`player_x.eq.${userId},player_o.eq.${userId}`)
+      .order("created_at", { ascending: false }),
+    // Every finished draft game system-wide, so the leaderboard shows each player's overall record.
+    db.from("draft_games").select("player_x, player_o, winner, result").eq("status", "finished"),
+  ]);
   if (usersError) return NextResponse.json({ error: "Couldn't load players." }, { status: 500 });
-
-  const { data: games, error: gamesError } = await db
-    .from("draft_games")
-    .select("id, player_x, player_o, status, turn, winner, result, created_at")
-    .or(`player_x.eq.${userId},player_o.eq.${userId}`)
-    .order("created_at", { ascending: false });
   if (gamesError) return NextResponse.json({ error: "Couldn't load games." }, { status: 500 });
+  if (allGamesError) return NextResponse.json({ error: "Couldn't load games." }, { status: 500 });
 
   const usernameById = new Map(users.map((u) => [u.id as string, u.username as string]));
   const opponentOf = (game: (typeof games)[number]) => (game.player_x === userId ? game.player_o : game.player_x);
@@ -60,13 +65,6 @@ export async function GET() {
       return { id: game.id, opponent: { id: opponentId, username: usernameById.get(opponentId) ?? "Unknown" }, outcome };
     });
 
-  // Every finished draft game system-wide, so the leaderboard shows each player's overall record.
-  const { data: allFinishedGames, error: allGamesError } = await db
-    .from("draft_games")
-    .select("player_x, player_o, winner, result")
-    .eq("status", "finished");
-  if (allGamesError) return NextResponse.json({ error: "Couldn't load games." }, { status: 500 });
-
   const record = new Map<string, { wins: number; losses: number; draws: number }>();
   const bump = (id: string, key: "wins" | "losses" | "draws") => {
     const entry = record.get(id) ?? { wins: 0, losses: 0, draws: 0 };
@@ -86,7 +84,8 @@ export async function GET() {
   const leaderboard: LeaderboardEntry[] = visibleUsers
     .map((u) => {
       const rec = record.get(u.id) ?? { wins: 0, losses: 0, draws: 0 };
-      return { id: u.id, username: u.username, vibranium: u.vibranium, ...rec };
+      const vibranium = rec.wins * 100 - rec.losses * 50 - rec.draws * 10;
+      return { id: u.id, username: u.username, vibranium, ...rec };
     })
     .sort((a, b) => b.vibranium - a.vibranium);
 

@@ -41,7 +41,7 @@ function toggleIn<T>(set: Set<T>, value: T): Set<T> {
 }
 
 export function TitleExplorer({ titles, initialOrder, orderBasePath }: Props) {
-  const { isWatched, setWatched, ratingFor, rateTitle, user } = useApp();
+  const { isWatched, setWatched, ratingFor, rateTitle, user, schedules } = useApp();
   const [order, setOrder] = useState<OrderType>(initialOrder);
   const [types, setTypes] = useState<Set<TitleType>>(new Set());
   const [importances, setImportances] = useState<Set<Importance>>(new Set());
@@ -108,7 +108,7 @@ export function TitleExplorer({ titles, initialOrder, orderBasePath }: Props) {
       <ProgressNotices />
 
       <div className="flex flex-wrap items-center gap-3">
-        <OrderToggle order={order} onChange={setOrder} basePath={orderBasePath} />
+        <OrderToggle order={order} onChange={setOrder} basePath={orderBasePath} hasSavedSchedule={schedules.length > 0} />
       </div>
 
       <div className="comic-panel p-4">
@@ -253,10 +253,12 @@ function OrderToggle({
   order,
   onChange,
   basePath,
+  hasSavedSchedule,
 }: {
   order: OrderType;
   onChange: (o: OrderType) => void;
   basePath?: string;
+  hasSavedSchedule?: boolean;
 }) {
   const options: Array<[OrderType, string]> = [
     ["story", "Story order"],
@@ -292,6 +294,14 @@ function OrderToggle({
             {label}
           </button>
         ),
+      )}
+      {hasSavedSchedule && (
+        <Link
+          href="/planner"
+          className={`${base} bg-gradient-to-b from-amber-100 to-amber-50 text-amber-800 shadow-[3px_3px_0_#000] hover:opacity-90`}
+        >
+          Planned order
+        </Link>
       )}
     </div>
   );
