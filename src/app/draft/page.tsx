@@ -106,6 +106,15 @@ export default function DraftPage() {
     setBusyId(null);
   };
 
+  const withdraw = async (gameId: string) => {
+    setBusyId(gameId);
+    const res = await fetch(`/api/draft/${gameId}`, { method: "DELETE" });
+    const body = (await res.json().catch(() => ({}))) as { error?: string };
+    if (!res.ok) setError(body.error ?? "Couldn't withdraw the invite.");
+    else await load();
+    setBusyId(null);
+  };
+
   const join = async () => {
     setJoining(true);
     const res = await fetch("/api/draft/join", { method: "POST" });
@@ -220,8 +229,16 @@ export default function DraftPage() {
               <h2 className="font-display text-xl font-semibold">Waiting on a response</h2>
               <ul className="space-y-2">
                 {data.outgoingInvites.map((invite_) => (
-                  <li key={invite_.id} className="rounded-lg border-2 border-black bg-surface-2 px-3 py-2 text-muted">
-                    Invite sent to <span className="font-medium text-ink">{invite_.opponent.username}</span>
+                  <li key={invite_.id} className="flex items-center justify-between gap-3 rounded-lg border-2 border-black bg-surface-2 px-3 py-2">
+                    <span className="text-muted">Invite sent to <span className="font-medium text-ink">{invite_.opponent.username}</span></span>
+                    <button
+                      type="button"
+                      disabled={busyId === invite_.id}
+                      onClick={() => void withdraw(invite_.id)}
+                      className="comic-btn rounded-lg bg-surface-2 px-3 py-1.5 text-sm text-muted hover:text-ink disabled:opacity-60"
+                    >
+                      Withdraw
+                    </button>
                   </li>
                 ))}
               </ul>
