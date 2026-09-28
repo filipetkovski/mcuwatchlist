@@ -28,13 +28,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       .select(DRAFT_GAME_COLUMNS)
       .single();
     if (declineError || !declined) return NextResponse.json({ error: "Couldn't decline." }, { status: 500 });
-    return NextResponse.json({ game: await toClientDraftGame(db, declined as DraftGameRow) });
+    return NextResponse.json({ game: await toClientDraftGame(db, declined as DraftGameRow, g.session.userId) });
   }
 
   const { data: existingGames, error: existingError } = await db
     .from("draft_games")
     .select("id, player_x, player_o")
-    .eq("status", "active")
+    .in("status", ["active", "lineup"])
     .neq("id", id);
   if (existingError) return NextResponse.json({ error: "Couldn't start the draft." }, { status: 500 });
   const busy = (playerId: string) => existingGames.some((game) => game.player_x === playerId || game.player_o === playerId);
@@ -63,5 +63,5 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     .single();
   if (startError || !started) return NextResponse.json({ error: "Couldn't start the draft." }, { status: 500 });
 
-  return NextResponse.json({ game: await toClientDraftGame(db, started as DraftGameRow) });
+  return NextResponse.json({ game: await toClientDraftGame(db, started as DraftGameRow, g.session.userId) });
 }

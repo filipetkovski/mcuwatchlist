@@ -38,5 +38,5 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     return NextResponse.json({ error: "Not your game." }, { status: 403 });
   }
 
-  return NextResponse.json({ game: await toClientDraftGame(db, row) });
+  return NextResponse.json({ game: await toClientDraftGame(db, row, g.session.userId) });
 }

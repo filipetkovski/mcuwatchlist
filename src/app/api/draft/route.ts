@@ -19,7 +19,7 @@ export async function GET() {
     db.from("users").select("id, username, role, draft_joined").order("username", { ascending: true }),
     db
       .from("draft_games")
-      .select("id, player_x, player_o, status, turn, winner, result, created_at")
+      .select("id, player_x, player_o, status, turn, lineup_x, lineup_o, winner, result, created_at")
       .or(`player_x.eq.${userId},player_o.eq.${userId}`)
       .order("created_at", { ascending: false }),
     // Every finished draft game system-wide, so the leaderboard shows each player's overall record.
@@ -45,13 +45,17 @@ export async function GET() {
     .map((game) => ({ id: game.id, opponent: { id: game.player_o, username: usernameById.get(game.player_o) ?? "Unknown" } }));
 
   const activeGames = games
-    .filter((game) => game.status === "active")
+    .filter((game) => game.status === "active" || game.status === "lineup")
     .map((game) => {
       const opponentId = opponentOf(game);
+      const yourTurn =
+        game.status === "active"
+          ? game.turn === userId
+          : game.player_x === userId ? game.lineup_x === null : game.lineup_o === null;
       return {
         id: game.id,
         opponent: { id: opponentId, username: usernameById.get(opponentId) ?? "Unknown" },
-        yourTurn: game.turn === userId,
+        yourTurn,
       };
     });
 
@@ -129,7 +133,7 @@ export async function POST(req: NextRequest) {
   const { data: existingGames, error: existingError } = await db
     .from("draft_games")
     .select("player_x, player_o")
-    .in("status", ["pending", "active"]);
+    .in("status", ["pending", "active", "lineup"]);
   if (existingError) return NextResponse.json({ error: "Couldn't send invite." }, { status: 500 });
   const busy = (id: string) => existingGames.some((game) => game.player_x === id || game.player_o === id);
   if (busy(userId)) {

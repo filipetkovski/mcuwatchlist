@@ -1,7 +1,7 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { DRAFT_CHARACTERS } from "@/data/draft-characters";
-import type { DraftGame, DraftPick } from "@/lib/types";
+import type { DraftGame, DraftPick, DraftStatus } from "@/lib/types";
 
 export const STARTING_BUDGET = 20;
 export const CHARACTERS_PER_GAME = 10;
@@ -11,7 +11,7 @@ export interface DraftGameRow {
   id: string;
   player_x: string;
   player_o: string;
-  status: "pending" | "active" | "finished" | "declined";
+  status: DraftStatus;
   character_ids: string[];
   round: number;
   first_bidder: string | null;
@@ -22,6 +22,8 @@ export interface DraftGameRow {
   budget_o: number;
   picks_x: DraftPick[];
   picks_o: DraftPick[];
+  lineup_x: string[] | null;
+  lineup_o: string[] | null;
   winner: string | null;
   result: "win" | "draw" | null;
   created_at: string;
@@ -29,7 +31,7 @@ export interface DraftGameRow {
 }
 
 export const DRAFT_GAME_COLUMNS =
-  "id, player_x, player_o, status, character_ids, round, first_bidder, turn, current_bid, current_bidder, budget_x, budget_o, picks_x, picks_o, winner, result, created_at, updated_at";
+  "id, player_x, player_o, status, character_ids, round, first_bidder, turn, current_bid, current_bidder, budget_x, budget_o, picks_x, picks_o, lineup_x, lineup_o, winner, result, created_at, updated_at";
 
 async function updateDraftGame(db: SupabaseClient, gameId: string, fields: Record<string, unknown>): Promise<DraftGameRow | null> {
   const { data, error } = await db.from("draft_games").update(fields).eq("id", gameId).select(DRAFT_GAME_COLUMNS).single();
@@ -77,19 +79,13 @@ function powerOf(characterId: string): number {
   return DRAFT_CHARACTERS.find((c) => c.id === characterId)?.power ?? 0;
 }
 
-function sortedByPowerDesc(picks: DraftPick[]): DraftPick[] {
-  return [...picks].sort((a, b) => powerOf(b.characterId) - powerOf(a.characterId));
-}
-
-/** Compares picks 1v1 after sorting by power. Returns who won more matchups. */
-function matchupWinner(xPicks: DraftPick[], oPicks: DraftPick[]): { result: "win" | "draw"; xWinner: boolean } {
-  const xSorted = sortedByPowerDesc(xPicks);
-  const oSorted = sortedByPowerDesc(oPicks);
+/** Compares lineups position by position. Returns who won more of the PICKS_TO_WIN matchups. */
+function lineupMatchupResult(xLineup: string[], oLineup: string[]): { result: "win" | "draw"; xWinner: boolean } {
   let xWins = 0;
   let oWins = 0;
-  for (let i = 0; i < Math.min(xSorted.length, oSorted.length); i++) {
-    const xPow = powerOf(xSorted[i].characterId);
-    const oPow = powerOf(oSorted[i].characterId);
+  for (let i = 0; i < Math.min(xLineup.length, oLineup.length); i++) {
+    const xPow = powerOf(xLineup[i]);
+    const oPow = powerOf(oLineup[i]);
     if (xPow > oPow) xWins++;
     else if (oPow > xPow) oWins++;
   }
@@ -124,10 +120,9 @@ export async function applyBid(db: SupabaseClient, row: DraftGameRow, userId: st
 }
 
 /**
- * Concedes the current character to whoever holds the current bid (there must be one - the round
- * always has to be opened with a bid first). Deducts their payment, records the pick, and either
- * starts the next round or - once a player reaches PICKS_TO_WIN - hands the rest of the list
- * straight to the other player and ends the game.
+ * Concedes the current character to whoever holds the current bid. Deducts their payment, records
+ * the pick, and either starts the next round or - once a player reaches PICKS_TO_WIN - hands the
+ * rest to the other player for free and transitions to the lineup phase.
  */
 export async function applyPass(db: SupabaseClient, row: DraftGameRow): Promise<DraftGameRow | null> {
   if (row.current_bidder === null) return null;
@@ -150,13 +145,7 @@ export async function applyPass(db: SupabaseClient, row: DraftGameRow): Promise<
     fields[picksField(row, loserId)] = loserPicks;
     fields.round = row.character_ids.length;
     fields.turn = null;
-    fields.status = "finished";
-
-    const xPicks = winnerId === row.player_x ? winnerPicks : loserPicks;
-    const oPicks = winnerId === row.player_o ? winnerPicks : loserPicks;
-    const { result, xWinner } = matchupWinner(xPicks, oPicks);
-    fields.result = result;
-    fields.winner = result === "win" ? (xWinner ? row.player_x : row.player_o) : null;
+    fields.status = "lineup";
   } else {
     fields.round = row.round + 1;
     fields.turn = starterFor(row, row.round + 1);
@@ -165,9 +154,46 @@ export async function applyPass(db: SupabaseClient, row: DraftGameRow): Promise<
   return updateDraftGame(db, row.id, fields);
 }
 
-export async function toClientDraftGame(db: SupabaseClient, game: DraftGameRow): Promise<DraftGame> {
+/**
+ * Records a player's lineup order. When both players have submitted, compares position by position
+ * and sets the final result, transitioning the game to "finished".
+ */
+export async function applyLineup(
+  db: SupabaseClient,
+  row: DraftGameRow,
+  userId: string,
+  lineup: string[],
+): Promise<DraftGameRow | null> {
+  if (row.status !== "lineup") return null;
+  const isX = userId === row.player_x;
+  const lineupField = isX ? "lineup_x" : "lineup_o";
+  const otherLineup = isX ? row.lineup_o : row.lineup_x;
+
+  const fields: Record<string, unknown> = { [lineupField]: lineup };
+
+  if (otherLineup !== null) {
+    const xLineup = isX ? lineup : otherLineup;
+    const oLineup = isX ? otherLineup : lineup;
+    const { result, xWinner } = lineupMatchupResult(xLineup, oLineup);
+    fields.status = "finished";
+    fields.result = result;
+    fields.winner = result === "win" ? (xWinner ? row.player_x : row.player_o) : null;
+  }
+
+  return updateDraftGame(db, row.id, fields);
+}
+
+export async function toClientDraftGame(db: SupabaseClient, game: DraftGameRow, viewerUserId?: string): Promise<DraftGame> {
   const { data: players } = await db.from("users").select("id, username").in("id", [game.player_x, game.player_o]);
   const byId = new Map((players ?? []).map((p) => [p.id as string, p.username as string]));
+
+  // Hide the opponent's lineup during lineup phase to preserve strategic placement.
+  let lineupX: string[] | null = game.lineup_x;
+  let lineupO: string[] | null = game.lineup_o;
+  if (game.status === "lineup" && viewerUserId) {
+    if (viewerUserId === game.player_x) lineupO = null;
+    else if (viewerUserId === game.player_o) lineupX = null;
+  }
 
   return {
     id: game.id,
@@ -181,6 +207,8 @@ export async function toClientDraftGame(db: SupabaseClient, game: DraftGameRow):
     currentBidder: game.current_bidder,
     budgets: { x: game.budget_x, o: game.budget_o },
     picks: { x: game.picks_x, o: game.picks_o },
+    lineupX,
+    lineupO,
     winner: game.winner,
     result: game.result,
     createdAt: game.created_at,

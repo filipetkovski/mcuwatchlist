@@ -104,6 +104,7 @@ export interface SavedSchedule {
 
 export type GameCell = "X" | "O" | null;
 export type GameStatus = "pending" | "active" | "finished" | "declined";
+export type DraftStatus = "pending" | "active" | "lineup" | "finished" | "declined";
 export type GameResult = "win" | "draw";
 
 export interface GamePlayer {
@@ -167,7 +168,7 @@ export interface DraftGame {
   id: string;
   playerX: GamePlayer;
   playerO: GamePlayer;
-  status: GameStatus;
+  status: DraftStatus;
   /** The 10 characters in this game, in reveal order. */
   characterIds: string[];
   /** Index into characterIds of the one currently up for bid (or characterIds.length once done). */
@@ -177,6 +178,9 @@ export interface DraftGame {
   currentBidder: string | null;
   budgets: { x: number; o: number };
   picks: { x: DraftPick[]; o: DraftPick[] };
+  /** Player's submitted lineup order (characterIds). Opponent's is hidden during lineup phase. */
+  lineupX: string[] | null;
+  lineupO: string[] | null;
   winner: string | null;
   result: GameResult | null;
   createdAt: string;

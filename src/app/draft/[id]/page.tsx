@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useApp } from "@/components/app-provider";
 import { DRAFT_CHARACTERS } from "@/data/draft-characters";
-import type { DraftPick } from "@/lib/types";
+import type { DraftPick, DraftStatus } from "@/lib/types";
 
 interface Player {
   id: string;
@@ -16,7 +16,7 @@ interface DraftGame {
   id: string;
   playerX: Player;
   playerO: Player;
-  status: "pending" | "active" | "finished" | "declined";
+  status: DraftStatus;
   characterIds: string[];
   round: number;
   turn: string | null;
@@ -24,6 +24,8 @@ interface DraftGame {
   currentBidder: string | null;
   budgets: { x: number; o: number };
   picks: { x: DraftPick[]; o: DraftPick[] };
+  lineupX: string[] | null;
+  lineupO: string[] | null;
   winner: string | null;
   result: "win" | "draw" | null;
 }
@@ -111,6 +113,11 @@ export default function DraftGamePage() {
   const currentCharacter = currentCharacterId ? characterOf(currentCharacterId) : null;
   const currentBidderName = game.currentBidder === game.playerX.id ? game.playerX.username : game.playerO.username;
 
+  const myPicks = isX ? game.picks.x : game.picks.o;
+  const myLineup = isX ? game.lineupX : game.lineupO;
+  const myLineupSubmitted = myLineup !== null;
+  const allPicksRevealed = visibleX === game.picks.x.length && visibleO === game.picks.o.length;
+
   const respond = async (accept: boolean) => {
     setBusy(true);
     const res = await fetch(`/api/draft/${gameId}/respond`, {
@@ -150,6 +157,20 @@ export default function DraftGamePage() {
     });
     const body = (await res.json().catch(() => ({}))) as { game?: DraftGame; error?: string };
     if (!res.ok) setError(body.error ?? "Couldn't pass.");
+    else if (body.game) setGame(body.game);
+    setBusy(false);
+  };
+
+  const submitLineup = async (lineup: string[]) => {
+    setBusy(true);
+    setError(null);
+    const res = await fetch(`/api/draft/${gameId}/action`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "lineup", lineup }),
+    });
+    const body = (await res.json().catch(() => ({}))) as { game?: DraftGame; error?: string };
+    if (!res.ok) setError(body.error ?? "Couldn't submit your lineup.");
     else if (body.game) setGame(body.game);
     setBusy(false);
   };
@@ -196,7 +217,7 @@ export default function DraftGamePage() {
 
       {game.status === "declined" && <p className="text-muted">This invite was declined.</p>}
 
-      {(game.status === "active" || game.status === "finished") && (
+      {(game.status === "active" || game.status === "lineup" || game.status === "finished") && (
         <>
           {game.status === "active" && currentCharacter && (
             <section aria-label="Up for bid" className="comic-panel space-y-3 p-5 text-center">
@@ -308,13 +329,28 @@ export default function DraftGamePage() {
             />
           </section>
 
-          {game.status === "finished" && visibleX === game.picks.x.length && visibleO === game.picks.o.length && (
+          {game.status === "lineup" && allPicksRevealed && (
+            myLineupSubmitted ? (
+              <div className="comic-panel p-4 text-center">
+                <p className="font-display text-lg font-semibold">Lineup locked in!</p>
+                <p className="mt-1 text-sm text-muted">Waiting for {opponent.username} to set their lineup…</p>
+              </div>
+            ) : (
+              <LineupBuilder
+                picks={isX ? game.picks.x : game.picks.o}
+                onSubmit={(lineup) => void submitLineup(lineup)}
+                busy={busy}
+              />
+            )
+          )}
+
+          {game.status === "finished" && allPicksRevealed && game.lineupX && game.lineupO && (
             <>
               <MatchupBreakdown
                 xName={game.playerX.username}
                 oName={game.playerO.username}
-                xPicks={game.picks.x}
-                oPicks={game.picks.o}
+                xLineup={game.lineupX}
+                oLineup={game.lineupO}
               />
               <section className="comic-panel space-y-1 p-4 text-center">
                 {game.result === "draw" ? (
@@ -325,12 +361,12 @@ export default function DraftGamePage() {
                 ) : game.winner === user.id ? (
                   <>
                     <p className="font-display text-2xl text-emerald-600">You won the draft!</p>
-                    <p className="text-muted">Your picks dominated more matchups. +100 vibraniums.</p>
+                    <p className="text-muted">Your lineup dominated more matchups. +100 vibraniums.</p>
                   </>
                 ) : (
                   <>
                     <p className="font-display text-2xl text-red-600">You lost the draft.</p>
-                    <p className="text-muted">{opponent.username}&apos;s picks won more matchups. -50 vibraniums.</p>
+                    <p className="text-muted">{opponent.username}&apos;s lineup won more matchups. -50 vibraniums.</p>
                   </>
                 )}
               </section>
@@ -388,28 +424,117 @@ function PlayerColumn({
   );
 }
 
+function LineupBuilder({
+  picks,
+  onSubmit,
+  busy,
+}: {
+  picks: DraftPick[];
+  onSubmit: (lineup: string[]) => void;
+  busy: boolean;
+}) {
+  const [items, setItems] = useState<DraftPick[]>(() => [...picks]);
+  const dragIndex = useRef<number | null>(null);
+  const [dragging, setDragging] = useState<number | null>(null);
+
+  const move = (from: number, to: number) => {
+    setItems((prev) => {
+      const next = [...prev];
+      const [item] = next.splice(from, 1);
+      next.splice(to, 0, item);
+      return next;
+    });
+  };
+
+  return (
+    <section className="comic-panel space-y-4 p-4">
+      <div>
+        <h2 className="font-display text-xl font-semibold">Set your lineup</h2>
+        <p className="mt-1 text-sm text-muted">
+          Drag to order your heroes 1–5. Position 1 fights their position 1, and so on — your opponent can&apos;t see your order until both lineups are locked in.
+        </p>
+      </div>
+
+      <ol className="space-y-2">
+        {items.map((pick, i) => {
+          const c = characterOf(pick.characterId);
+          return (
+            <li
+              key={pick.characterId}
+              draggable
+              onDragStart={() => { dragIndex.current = i; setDragging(i); }}
+              onDragOver={(e) => {
+                e.preventDefault();
+                if (dragIndex.current === null || dragIndex.current === i) return;
+                move(dragIndex.current, i);
+                dragIndex.current = i;
+              }}
+              onDragEnd={() => { dragIndex.current = null; setDragging(null); }}
+              className={`flex cursor-grab items-center gap-3 rounded-lg border-2 border-black bg-surface-2 px-3 py-2.5 transition-opacity active:cursor-grabbing ${dragging === i ? "opacity-50" : ""}`}
+            >
+              <span className="w-5 shrink-0 text-center font-mono text-sm font-bold text-muted">{i + 1}</span>
+              <span
+                className={`shrink-0 rounded-full border border-black px-2 py-0.5 text-[10px] font-bold uppercase ${
+                  c.alignment === "hero" ? "bg-emerald-500/30 text-emerald-700" : "bg-red-600/20 text-red-700"
+                }`}
+              >
+                {c.alignment}
+              </span>
+              <span className="flex-1 font-semibold">{c.name}</span>
+              <span className="flex shrink-0 gap-1">
+                <button
+                  type="button"
+                  aria-label={`Move ${c.name} up`}
+                  disabled={i === 0}
+                  onClick={() => move(i, i - 1)}
+                  className="rounded border border-black bg-surface px-1.5 py-0.5 text-xs disabled:opacity-30"
+                >
+                  ↑
+                </button>
+                <button
+                  type="button"
+                  aria-label={`Move ${c.name} down`}
+                  disabled={i === items.length - 1}
+                  onClick={() => move(i, i + 1)}
+                  className="rounded border border-black bg-surface px-1.5 py-0.5 text-xs disabled:opacity-30"
+                >
+                  ↓
+                </button>
+              </span>
+            </li>
+          );
+        })}
+      </ol>
+
+      <button
+        type="button"
+        disabled={busy}
+        onClick={() => onSubmit(items.map((p) => p.characterId))}
+        className="comic-btn w-full rounded-lg bg-accent px-4 py-3 font-display text-lg text-white disabled:opacity-60"
+      >
+        Lock in lineup
+      </button>
+    </section>
+  );
+}
+
 function MatchupBreakdown({
   xName,
   oName,
-  xPicks,
-  oPicks,
+  xLineup,
+  oLineup,
 }: {
   xName: string;
   oName: string;
-  xPicks: DraftPick[];
-  oPicks: DraftPick[];
+  xLineup: string[];
+  oLineup: string[];
 }) {
-  const sorted = (picks: DraftPick[]) =>
-    [...picks].sort((a, b) => characterOf(b.characterId).power - characterOf(a.characterId).power);
-  const xSorted = sorted(xPicks);
-  const oSorted = sorted(oPicks);
-
   let xWins = 0;
   let oWins = 0;
-  const matchups = xSorted.map((xPick, i) => {
-    const oPick = oSorted[i];
-    const xChar = characterOf(xPick.characterId);
-    const oChar = characterOf(oPick.characterId);
+  const matchups = xLineup.map((xId, i) => {
+    const oId = oLineup[i];
+    const xChar = characterOf(xId);
+    const oChar = characterOf(oId);
     const winner = xChar.power > oChar.power ? "x" : oChar.power > xChar.power ? "o" : "draw";
     if (winner === "x") xWins++;
     else if (winner === "o") oWins++;
