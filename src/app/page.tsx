@@ -59,11 +59,11 @@ export default async function HomePage() {
             <Link
               href="/tic-tac-toe"
               className="relative flex min-h-56 flex-col overflow-hidden comic-panel p-5 transition-transform hover:-translate-y-0.5"
-              style={{ background: "linear-gradient(160deg, #8a5cf6 0%, #5b21b6 55%, #2e1065 100%)" }}
+              style={{ background: "linear-gradient(160deg, #1f8a4f 0%, #0f5a33 55%, #08301c 100%)" }}
             >
               <TicTacToeIcon className="pointer-events-none absolute -bottom-6 -right-6 h-40 w-40 select-none opacity-40" />
               <h3 className="relative font-display text-xl font-semibold">Tic-Tac-Toe</h3>
-              <p className="relative mt-1 text-sm font-medium text-[#e4d4ff]">Challenge another fan to a match.</p>
+              <p className="relative mt-1 text-sm font-medium text-[#b8f7cd]">Challenge another fan to a match.</p>
               <p className="relative mt-2 flex-1 text-sm text-white/90">
                 Play tic-tac-toe against someone else on the site, answering Marvel trivia to earn each move.
               </p>
