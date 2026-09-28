@@ -7,32 +7,44 @@ const dev = process.env.NODE_ENV !== "production";
 const hostname = process.env.HOSTNAME ?? "localhost";
 const port = parseInt(process.env.PORT ?? "3000", 10);
 
-// Create the HTTP server with NO request listener yet — Socket.io must be
-// attached first so its listener runs before Next.js's handler.
-const httpServer = createServer();
-const app = next({ dev, hostname, port, httpServer });
+// Don't pass httpServer to next() — Next.js would attach its own listeners
+// immediately, which would intercept socket handshakes before Socket.io runs.
+const app = next({ dev, hostname, port });
 const handle = app.getRequestHandler();
 
 app.prepare().then(() => {
+  // Create HTTP server inside .then() so all listeners are added AFTER prepare.
+  const httpServer = createServer();
+
+  // Attach Socket.io FIRST so its "upgrade" and "request" listeners are first.
   const io = new Server(httpServer, {
     path: "/api/socket",
     cors: { origin: "*" },
   });
 
   (globalThis as Record<string, unknown>).__socketIo = io;
+  console.log("[socket] io instance stored on globalThis");
 
   io.on("connection", (socket) => {
-    socket.on("subscribe", (room: string) => { socket.join(room); });
-    socket.on("unsubscribe", (room: string) => { socket.leave(room); });
+    console.log("[socket] client connected:", socket.id);
+    socket.on("subscribe", (room: string) => {
+      console.log("[socket] subscribe:", room);
+      socket.join(room);
+    });
+    socket.on("unsubscribe", (room: string) => {
+      socket.leave(room);
+    });
+    socket.on("disconnect", () => {
+      console.log("[socket] client disconnected:", socket.id);
+    });
   });
 
-  // Add Next.js AFTER Socket.io. For socket paths, skip Next.js entirely so
-  // we don't try to write headers onto a response engine.io already owns.
+  // Add Next.js AFTER Socket.io. Skip /api/socket paths so we never touch
+  // a response that engine.io already owns.
   httpServer.on("request", (req, res) => {
     const url = req.url ?? "/";
     if (url.startsWith("/api/socket")) return;
-    const parsedUrl = parse(url, true);
-    handle(req, res, parsedUrl);
+    handle(req, res, parse(url, true));
   });
 
   httpServer.listen(port, hostname, () => {

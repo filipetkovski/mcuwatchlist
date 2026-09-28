@@ -39,6 +39,7 @@ export default function TicTacToeGamePage() {
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [selectedCell, setSelectedCell] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
+  const [confirmSurrender, setConfirmSurrender] = useState(false);
   const [now, setNow] = useState(() => Date.now());
   const lastQuestionId = useRef<string | null>(null);
 
@@ -98,6 +99,16 @@ export default function TicTacToeGamePage() {
     const body = (await res.json().catch(() => ({}))) as { game?: Game; error?: string };
     if (!res.ok) setError(body.error ?? "Couldn't respond to invite.");
     else if (body.game) setGame(body.game);
+    setBusy(false);
+  };
+
+  const surrender = async () => {
+    setBusy(true);
+    const res = await fetch(`/api/games/${gameId}/surrender`, { method: "POST" });
+    const body = (await res.json().catch(() => ({}))) as { game?: Game; error?: string };
+    if (!res.ok) { setError(body.error ?? "Couldn't surrender."); setBusy(false); return; }
+    if (body.game) setGame(body.game);
+    setConfirmSurrender(false);
     setBusy(false);
   };
 
@@ -168,6 +179,21 @@ export default function TicTacToeGamePage() {
               <p className="text-sm text-muted">
                 Wrong answers - You: {isPlayerX ? game.wrongAnswers.x : game.wrongAnswers.o}/{MAX_STRIKES} · {opponent.username}: {isPlayerX ? game.wrongAnswers.o : game.wrongAnswers.x}/{MAX_STRIKES}
               </p>
+              {!confirmSurrender ? (
+                <button type="button" onClick={() => setConfirmSurrender(true)} className="mt-1 text-xs text-muted underline underline-offset-2 hover:text-red-600">
+                  Surrender
+                </button>
+              ) : (
+                <div className="mt-2 flex items-center justify-center gap-2">
+                  <span className="text-xs text-muted">Forfeit the game?</span>
+                  <button type="button" disabled={busy} onClick={() => void surrender()} className="comic-btn rounded-md bg-red-600 px-2.5 py-1 text-xs text-white disabled:opacity-60">
+                    Yes, surrender
+                  </button>
+                  <button type="button" disabled={busy} onClick={() => setConfirmSurrender(false)} className="text-xs text-muted hover:text-ink">
+                    Cancel
+                  </button>
+                </div>
+              )}
             </div>
           )}
 

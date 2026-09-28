@@ -71,6 +71,7 @@ export default function DraftGamePage() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [bidValue, setBidValue] = useState("");
+  const [confirmSurrender, setConfirmSurrender] = useState(false);
 
   // Initial load
   useEffect(() => {
@@ -181,6 +182,16 @@ export default function DraftGamePage() {
     setBusy(false);
   };
 
+  const surrender = async () => {
+    setBusy(true);
+    const res = await fetch(`/api/draft/${gameId}/surrender`, { method: "POST" });
+    const body = (await res.json().catch(() => ({}))) as { game?: DraftGame; error?: string };
+    if (!res.ok) { setError(body.error ?? "Couldn't surrender."); setBusy(false); return; }
+    if (body.game) setGame(body.game);
+    setConfirmSurrender(false);
+    setBusy(false);
+  };
+
   const minBid = opening ? (myBudget > 0 ? 1 : 0) : game.currentBid + 1;
   const canRaise = myBudget >= minBid;
 
@@ -222,6 +233,26 @@ export default function DraftGamePage() {
       )}
 
       {game.status === "declined" && <p className="text-muted">This invite was declined.</p>}
+
+      {(game.status === "active" || game.status === "lineup") && (
+        <div className="flex justify-end">
+          {!confirmSurrender ? (
+            <button type="button" onClick={() => setConfirmSurrender(true)} className="text-xs text-muted underline underline-offset-2 hover:text-red-600">
+              Surrender
+            </button>
+          ) : (
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted">Forfeit the draft?</span>
+              <button type="button" disabled={busy} onClick={() => void surrender()} className="comic-btn rounded-md bg-red-600 px-2.5 py-1 text-xs text-white disabled:opacity-60">
+                Yes, surrender
+              </button>
+              <button type="button" disabled={busy} onClick={() => setConfirmSurrender(false)} className="text-xs text-muted hover:text-ink">
+                Cancel
+              </button>
+            </div>
+          )}
+        </div>
+      )}
 
       {(game.status === "active" || game.status === "lineup" || game.status === "finished") && (
         <>
