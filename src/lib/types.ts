@@ -16,7 +16,8 @@ export type Importance = "essential" | "recommended" | "optional" | "unconfirmed
 export type OrderType = "story" | "release";
 export type ScheduleMode = "strict" | "flexible";
 export type PathId = "new-to-marvel" | "prepare-for-doomsday" | "rewatch-essentials";
-export type ScopeId = PathId;
+/** What the planner can build a schedule from: the three built-in paths, plus two narrower filters. */
+export type ScopeId = PathId | "mcu-only" | "xmen-only";
 
 export interface Title {
   id: string;

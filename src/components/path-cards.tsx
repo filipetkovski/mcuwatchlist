@@ -1,23 +1,44 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { PATHS } from "@/lib/paths";
+import { useState } from "react";
+import { PATHS, SHARED_PROGRESS_KEY } from "@/lib/paths";
 import { formatHours } from "@/lib/format";
-import type { Title } from "@/lib/types";
+import type { PathId, Title } from "@/lib/types";
 import { useApp } from "./app-provider";
 import { AvengersMask } from "./avengers-mask";
 import { DoomMask } from "./doom-mask";
 import { IronManMask } from "./iron-man-mask";
 
 export function PathCards({ titles }: { titles: Title[] }) {
-  const { watchedFor, user } = useApp();
+  const router = useRouter();
+  const { watchedFor, user, selectPath } = useApp();
   const userPathId = user?.pathId ?? null;
+  const [switchingTo, setSwitchingTo] = useState<PathId | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const switchPath = async (pathId: PathId) => {
+    if (switchingTo) return;
+    setSwitchingTo(pathId);
+    setError(null);
+    const message = await selectPath(pathId);
+    setSwitchingTo(null);
+    if (message) setError(message);
+    else router.push("/watch-order/story");
+  };
 
   return (
-    <ul className="grid gap-4 md:grid-cols-3">
+    <div className="space-y-2">
+      {error && (
+        <p role="alert" className="rounded-lg border-2 border-black bg-warn px-3 py-2 text-sm font-medium text-black">
+          {error}
+        </p>
+      )}
+      <ul className="grid gap-4 md:grid-cols-3">
       {PATHS.map((path) => {
         const list = titles.filter(path.include);
-        const watchedMap = watchedFor(path.id);
+        const watchedMap = watchedFor(SHARED_PROGRESS_KEY);
         const watched = list.filter((t) => t.id in watchedMap).length;
         const minutes = list.reduce((sum, t) => sum + t.runtime_minutes, 0);
         const isSelected = userPathId === path.id;
@@ -50,11 +71,15 @@ export function PathCards({ titles }: { titles: Title[] }) {
             <p className="relative mt-4 text-xs text-white/85">
               {watched} of {list.length} watched · {formatHours(minutes)} total
             </p>
-            {isSelected && (
+            {isSelected ? (
               <span className="relative mt-3 self-start rounded-full border border-white/40 bg-white/20 px-2 py-0.5 text-xs font-medium text-white">
                 Your path
               </span>
-            )}
+            ) : userPathId !== null ? (
+              <span className="relative mt-3 self-start rounded-full border border-white/40 bg-white/10 px-2 py-0.5 text-xs font-medium text-white">
+                {switchingTo === path.id ? "Switching…" : "Switch to this path"}
+              </span>
+            ) : null}
           </>
         );
 
@@ -71,13 +96,15 @@ export function PathCards({ titles }: { titles: Title[] }) {
         if (isOther) {
           return (
             <li key={path.id}>
-              <div
-                className={`${baseClass} opacity-40 grayscale`}
+              <button
+                type="button"
+                disabled={switchingTo !== null}
+                onClick={() => void switchPath(path.id)}
+                className={`${baseClass} w-full text-left opacity-70 transition-transform hover:-translate-y-0.5 hover:opacity-100 disabled:cursor-wait`}
                 style={cardStyle}
-                aria-disabled="true"
               >
                 {inner}
-              </div>
+              </button>
             </li>
           );
         }
@@ -94,6 +121,7 @@ export function PathCards({ titles }: { titles: Title[] }) {
           </li>
         );
       })}
-    </ul>
+      </ul>
+    </div>
   );
 }

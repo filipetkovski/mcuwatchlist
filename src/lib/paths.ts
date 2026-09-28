@@ -1,6 +1,14 @@
+import { isXMenTitle } from "@/lib/titles";
 import type { PathId, ScopeId, Title } from "@/lib/types";
 
 export const DOOMSDAY_RELEASE = "2026-12-18";
+
+/**
+ * All three built-in paths are views over the same title catalog, so a title's watched state is
+ * shared across them - this is the progress key used for all of them, regardless of which path is
+ * active. Saved schedules (created in the planner) keep their own progress, keyed by schedule id.
+ */
+export const SHARED_PROGRESS_KEY = "titles";
 
 export interface PathDef {
   id: PathId;
@@ -46,6 +54,8 @@ export const PATHS: PathDef[] = [
 
 export const SCOPE_LABELS: Record<ScopeId, string> = {
   "new-to-marvel": "All titles",
+  "mcu-only": "MCU only",
+  "xmen-only": "X-Men only",
   "prepare-for-doomsday": "Prepare for Doomsday",
   "rewatch-essentials": "Rewatch the Essentials",
 };
@@ -57,6 +67,8 @@ export function getPath(slug: string): PathDef | undefined {
 }
 
 export function titlesForScope(titles: Title[], scope: ScopeId): Title[] {
+  if (scope === "mcu-only") return titles.filter((t) => t.universe === "mcu");
+  if (scope === "xmen-only") return titles.filter(isXMenTitle);
   const path = PATHS.find((p) => p.id === scope);
   return path ? titles.filter(path.include) : titles;
 }

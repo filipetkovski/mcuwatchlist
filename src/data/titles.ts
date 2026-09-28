@@ -76,7 +76,6 @@ const rows: Array<
   ["agatha-all-along", "Agatha All Along", "tv", "2024-09-18", 350, "optional"],
   ["captain-america-brave-new-world", "Captain America: Brave New World", "movie", "2025-02-14", 118, "essential", { leads: true }],
   ["thunderbolts", "Thunderbolts*", "movie", "2025-05-02", 127, "essential", { leads: true }],
-  ["ironheart", "Ironheart", "tv", "2025-06-24", 270, "optional"],
   ["the-fantastic-four-first-steps", "The Fantastic Four: First Steps", "movie", "2025-07-25", 115, "essential", { leads: true }],
   ["spider-man-brand-new-day", "Spider-Man: Brand New Day", "movie", "2026-07-31", 130, "unconfirmed"],
 ];

@@ -1,16 +1,18 @@
 "use client";
 
-import Link from "next/link";
 import { useMemo, useState } from "react";
+import { downloadIcs, googleCalendarUrl } from "@/lib/calendar";
 import { addDays, diffDays, formatDay, todayISO, weekStart } from "@/lib/dates";
-import { formatHours, formatRuntime } from "@/lib/format";
-import { DOOMSDAY_RELEASE, SCOPE_IDS, SCOPE_LABELS, titlesForScope } from "@/lib/paths";
+import { formatHours } from "@/lib/format";
+import { DOOMSDAY_RELEASE, SCOPE_IDS, SCOPE_LABELS, SHARED_PROGRESS_KEY, titlesForScope } from "@/lib/paths";
 import { ScheduleError, generateSchedule } from "@/lib/schedule";
 import { sortTitles } from "@/lib/titles";
 import type { GeneratedSchedule, OrderType, SavedSchedule, ScheduleDay, ScheduleMode, ScopeId, Title } from "@/lib/types";
 import { useToday } from "@/lib/use-today";
 import { useApp } from "./app-provider";
 import { ProgressNotices } from "./progress-notices";
+import { RateModal } from "./rate-modal";
+import { TitleRow } from "./title-row";
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const DEFAULT_DAYS = [5, 6, 0];
@@ -18,6 +20,8 @@ const DEFAULT_DAYS = [5, 6, 0];
 const fieldClass = "w-full rounded-lg border-2 border-black bg-surface-2 px-3 py-2.5 text-sm";
 const ghostBtn =
   "rounded-lg border-2 border-black bg-surface-2 px-3 py-1.5 text-sm hover:bg-surface disabled:opacity-60";
+const ghostBtnLg =
+  "rounded-lg border-2 border-black bg-surface-2 px-4 py-2.5 text-base font-medium hover:bg-surface disabled:opacity-60";
 
 export function Planner({ titles }: { titles: Title[] }) {
   const { dataReady } = useApp();
@@ -26,7 +30,7 @@ export function Planner({ titles }: { titles: Title[] }) {
 }
 
 function PlannerBody({ titles }: { titles: Title[] }) {
-  const { isWatched, schedules, saveSchedule, updateSchedule, deleteSchedule } = useApp();
+  const { isWatched, schedules, saveSchedule, deleteSchedule } = useApp();
 
   const [scope, setScope] = useState<ScopeId>("prepare-for-doomsday");
   const [orderType, setOrderType] = useState<OrderType>("story");
@@ -40,10 +44,10 @@ function PlannerBody({ titles }: { titles: Title[] }) {
   const [busy, setBusy] = useState(false);
 
   const [draft, setDraft] = useState<{ schedule: GeneratedSchedule; name: string } | null>(null);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const activeSaved = schedules.find((s) => s.id === selectedId) ?? schedules[0] ?? null;
+  const activeSaved = schedules[0] ?? null;
+  const settingsVisible = draft === null && activeSaved === null;
 
-  const remaining = sortTitles(titlesForScope(titles, scope), orderType).filter((t) => !isWatched(scope, t.id));
+  const remaining = sortTitles(titlesForScope(titles, scope), orderType).filter((t) => !isWatched(SHARED_PROGRESS_KEY, t.id));
   const remainingMinutes = remaining.reduce((sum, t) => sum + t.runtime_minutes, 0);
 
   const generate = () => {
@@ -89,37 +93,14 @@ function PlannerBody({ titles }: { titles: Title[] }) {
     const saved = await saveSchedule(name.slice(0, 60), draft.schedule);
     setBusy(false);
     if (saved) {
-      setSelectedId(saved.id);
       setDraft(null);
     }
-  };
-
-  const recalculate = async (saved: SavedSchedule) => {
-    setFormError(null);
-    const s = saved.schedule;
-    const list = sortTitles(
-      titles.filter((t) => s.titleIds.includes(t.id)),
-      s.settings.orderType,
-    ).filter((t) => !isWatched(saved.id, t.id));
-    if (list.length === 0) {
-      setFormError("Everything in this plan is already watched.");
-      return;
-    }
-    setBusy(true);
-    try {
-      const next = { ...generateSchedule(list, { ...s.settings, startDate: todayISO() }), titleIds: s.titleIds };
-      await updateSchedule(saved.id, next);
-    } catch (e) {
-      setFormError(e instanceof ScheduleError ? e.message : "Something went wrong recalculating.");
-    }
-    setBusy(false);
   };
 
   const remove = async (saved: SavedSchedule) => {
     if (!window.confirm(`Delete "${saved.name}" and its checked titles?`)) return;
     setBusy(true);
     await deleteSchedule(saved.id);
-    setSelectedId(null);
     setBusy(false);
   };
 
@@ -129,7 +110,8 @@ function PlannerBody({ titles }: { titles: Title[] }) {
   return (
     <div className="space-y-8">
       <ProgressNotices />
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]">
+      <div className={settingsVisible ? "grid gap-6 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]" : "space-y-4"}>
+        {settingsVisible && (
         <section aria-label="Schedule settings" className="comic-panel space-y-5 p-5 lg:self-start">
           <Field label="What to watch">
             <select value={scope} onChange={(e) => setScope(e.target.value as ScopeId)} className={fieldClass}>
@@ -229,31 +211,9 @@ function PlannerBody({ titles }: { titles: Title[] }) {
             Preview schedule
           </button>
         </section>
+        )}
 
         <section aria-label="Your schedule" className="min-w-0 space-y-4">
-          {(schedules.length > 0 || draft) && (
-            <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Plans">
-              {draft && (
-                <PlanChip active onClick={() => {}}>
-                  Preview (not saved)
-                </PlanChip>
-              )}
-              {schedules.map((s) => (
-                <PlanChip
-                  key={s.id}
-                  active={!draft && activeSaved?.id === s.id}
-                  onClick={() => {
-                    setDraft(null);
-                    setSelectedId(s.id);
-                  }}
-                >
-                  <span aria-hidden="true">★ </span>
-                  {s.name}
-                </PlanChip>
-              ))}
-            </div>
-          )}
-
           {draft ? (
             <>
               <div className="comic-panel space-y-3 p-4">
@@ -271,30 +231,38 @@ function PlannerBody({ titles }: { titles: Title[] }) {
                   <button type="button" onClick={() => void saveDraft()} disabled={busy} className="comic-btn rounded-lg bg-accent px-4 py-2 text-white disabled:opacity-60">
                     Save as path
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => downloadIcs(draft.schedule, draft.name || "MCU schedule")}
+                    className={ghostBtn}
+                  >
+                    Add to calendar
+                  </button>
                   <button type="button" onClick={() => setDraft(null)} className={ghostBtn}>
                     Discard
                   </button>
                 </div>
               </div>
-              <ScheduleView schedule={draft.schedule} pathId={null} />
+              <ScheduleView schedule={draft.schedule} pathId={null} titles={titles} />
             </>
           ) : activeSaved ? (
             <>
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <h2 className="font-display text-2xl">{activeSaved.name}</h2>
-                <div className="flex gap-2">
-                  <Link href={`/watch-order/story?path=${activeSaved.id}`} className={ghostBtn}>
-                    Open path
-                  </Link>
-                  <button type="button" onClick={() => void recalculate(activeSaved)} disabled={busy} className={ghostBtn}>
-                    Recalculate
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => downloadIcs(activeSaved.schedule, activeSaved.name)}
+                    className={ghostBtnLg}
+                  >
+                    Add to calendar
                   </button>
-                  <button type="button" onClick={() => void remove(activeSaved)} disabled={busy} className={`${ghostBtn} text-muted hover:text-ink`}>
+                  <button type="button" onClick={() => void remove(activeSaved)} disabled={busy} className={`${ghostBtnLg} text-muted hover:text-ink`}>
                     Delete
                   </button>
                 </div>
               </div>
-              <ScheduleView schedule={activeSaved.schedule} pathId={activeSaved.id} />
+              <ScheduleView schedule={activeSaved.schedule} pathId={activeSaved.id} titles={titles} />
             </>
           ) : (
             <div className="rounded-2xl border border-dashed border-line p-8 text-center text-muted">
@@ -308,7 +276,7 @@ function PlannerBody({ titles }: { titles: Title[] }) {
   );
 }
 
-function ScheduleView({ schedule, pathId }: { schedule: GeneratedSchedule; pathId: string | null }) {
+function ScheduleView({ schedule, pathId, titles }: { schedule: GeneratedSchedule; pathId: string | null; titles: Title[] }) {
   const { isWatched } = useApp();
   const { summary, settings } = schedule;
   const today = useToday();
@@ -323,71 +291,84 @@ function ScheduleView({ schedule, pathId }: { schedule: GeneratedSchedule; pathI
   }, [schedule.days]);
 
   const done = pathId ? schedule.titleIds.filter((id) => isWatched(pathId, id)).length : 0;
-  const overdue =
-    pathId !== null &&
-    today !== null &&
-    schedule.days.some((d) => d.date < today && d.items.some((i) => !isWatched(pathId, i.titleId)));
-  const paceText =
-    settings.paceType === "hours" ? `${summary.weeklyHours ?? "?"} h/week` : `${summary.titlesPerWeek ?? "?"} titles/week`;
   const dateFmt = { month: "short", day: "numeric", year: "numeric" } as const;
   const shortFmt = { month: "short", day: "numeric" } as const;
 
   return (
     <>
-      <div className="comic-panel p-5">
-        <p className="text-sm text-muted">
-          {SCOPE_LABELS[settings.scope]} · {settings.orderType === "story" ? "Story" : "Release"} order · {settings.mode} · {paceText}
+      <dl className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <Stat label="Finish date" value={summary.finishDate ? formatDay(summary.finishDate, dateFmt) : "-"} />
+        <Stat label="Titles" value={pathId ? `${done}/${schedule.titleIds.length} done` : String(summary.totalTitles)} />
+        <Stat label="Total time" value={formatHours(summary.totalMinutes)} />
+        <Stat label="Weeks" value={String(weeks.length)} />
+      </dl>
+
+      {pathId === null && settings.targetFinishDate && summary.finishDate && (
+        <p
+          className={`rounded-lg border-2 border-black px-3 py-2 text-sm font-medium ${
+            summary.onTrack ? "text-white" : "bg-warn text-black"
+          }`}
+          style={summary.onTrack ? { backgroundColor: "#1f8a4f" } : undefined}
+        >
+          {summary.onTrack
+            ? `On track to finish ${diffDays(summary.finishDate, settings.targetFinishDate)} days before ${formatDay(settings.targetFinishDate, shortFmt)}.`
+            : `This pace finishes ${summary.daysOverTarget} days after your ${formatDay(settings.targetFinishDate, shortFmt)} target. You'd need about ${
+                settings.paceType === "hours"
+                  ? `${Math.ceil((summary.requiredWeeklyHours ?? 0) * 2) / 2} hours`
+                  : `${Math.ceil((summary.requiredTitlesPerWeek ?? 0) * 2) / 2} titles`
+              } a week.`}
         </p>
-
-        <dl className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <Stat label="Finish date" value={summary.finishDate ? formatDay(summary.finishDate, dateFmt) : "-"} />
-          <Stat label="Titles" value={pathId ? `${done}/${schedule.titleIds.length} done` : String(summary.totalTitles)} />
-          <Stat label="Total time" value={formatHours(summary.totalMinutes)} />
-          <Stat label="Weeks" value={String(weeks.length)} />
-        </dl>
-
-        {settings.targetFinishDate && summary.finishDate && (
-          <p
-            className={`mt-4 rounded-lg border-2 border-black px-3 py-2 text-sm font-medium text-black ${
-              summary.onTrack ? "bg-good" : "bg-warn"
-            }`}
-          >
-            {summary.onTrack
-              ? `On track to finish ${diffDays(summary.finishDate, settings.targetFinishDate)} days before ${formatDay(settings.targetFinishDate, shortFmt)}.`
-              : `This pace finishes ${summary.daysOverTarget} days after your ${formatDay(settings.targetFinishDate, shortFmt)} target. You'd need about ${
-                  settings.paceType === "hours"
-                    ? `${Math.ceil((summary.requiredWeeklyHours ?? 0) * 2) / 2} hours`
-                    : `${Math.ceil((summary.requiredTitlesPerWeek ?? 0) * 2) / 2} titles`
-                } a week.`}
-          </p>
-        )}
-        {summary.truncated && (
-          <p className="mt-3 rounded-lg border-2 border-black bg-warn px-3 py-2 text-sm font-medium text-black">
-            At this pace the plan runs longer than we can lay out. Try raising your weekly pace.
-          </p>
-        )}
-        {overdue && (
-          <p className="mt-3 rounded-lg border-2 border-black bg-warn px-3 py-2 text-sm font-medium text-black">
-            Some sessions are behind you. Recalculate to shift what&apos;s left forward from today.
-          </p>
-        )}
-      </div>
+      )}
 
       {weeks.length === 0 ? (
         <p className="text-muted">Everything in this plan is scheduled or watched.</p>
       ) : (
-        <WeekPager weeks={weeks} today={today} pathId={pathId} />
+        <WeekPager weeks={weeks} today={today} pathId={pathId} titles={titles} titleIds={schedule.titleIds} />
       )}
     </>
   );
 }
 
-function WeekPager({ weeks, today, pathId }: { weeks: Array<[string, ScheduleDay[]]>; today: string | null; pathId: string | null }) {
-  const { isWatched, setWatched } = useApp();
-  const [requested, setRequested] = useState(0);
+function WeekPager({
+  weeks,
+  today,
+  pathId,
+  titles,
+  titleIds,
+}: {
+  weeks: Array<[string, ScheduleDay[]]>;
+  today: string | null;
+  pathId: string | null;
+  titles: Title[];
+  titleIds: string[];
+}) {
+  const { isWatched, setWatched, ratingFor, rateTitle } = useApp();
+  // Open on the first week that isn't fully watched yet, so returning to the planner picks up
+  // where you left off instead of always starting at week 1.
+  const [requested, setRequested] = useState(() => {
+    if (pathId === null) return 0;
+    const idx = weeks.findIndex(([, days]) => days.some((d) => d.items.some((i) => !isWatched(pathId, i.titleId))));
+    return idx === -1 ? weeks.length - 1 : idx;
+  });
+  const [skipped, setSkipped] = useState<Set<string>>(new Set());
+  const [ratingPrompt, setRatingPrompt] = useState<{ title: Title; pendingWatch: boolean } | null>(null);
+  const titleMap = useMemo(() => new Map(titles.map((t) => [t.id, t])), [titles]);
+  const positions = useMemo(() => new Map(titleIds.map((id, i) => [id, i + 1])), [titleIds]);
   const index = Math.min(requested, weeks.length - 1);
   const [start, weekDays] = weeks[index];
   const minutes = weekDays.reduce((sum, d) => sum + d.minutes, 0);
+  const rows = useMemo(
+    () => weekDays.flatMap((day) => day.items.map((item) => ({ item, date: day.date }))),
+    [weekDays],
+  );
+
+  // Marks a title watched and, if that was the last unwatched title this week, jumps to the next week.
+  const markWatchedAndAdvance = (titleId: string) => {
+    if (pathId === null) return;
+    setWatched(pathId, [titleId], true);
+    const stillUnwatched = rows.some((r) => r.item.titleId !== titleId && !isWatched(pathId, r.item.titleId));
+    if (!stillUnwatched && index < weeks.length - 1) setRequested(index + 1);
+  };
 
   const arrow =
     "comic-btn flex h-10 w-10 items-center justify-center rounded-full bg-accent text-white disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none disabled:hover:translate-x-0 disabled:hover:translate-y-0";
@@ -412,65 +393,78 @@ function WeekPager({ weeks, today, pathId }: { weeks: Array<[string, ScheduleDay
         </div>
       </div>
 
-      <section aria-label={`Week ${index + 1}`} className="comic-panel">
-        <div className="flex flex-wrap items-baseline justify-between gap-2 border-b-[3px] border-black px-4 py-3">
+      <div className="space-y-1">
+        <div className="flex flex-wrap items-baseline justify-between gap-2 px-1">
           <p className="text-sm text-muted">
             {formatDay(start, { month: "short", day: "numeric" })} – {formatDay(addDays(start, 6), { month: "short", day: "numeric" })}
           </p>
           <span className="text-sm text-muted">{formatHours(minutes)} this week</span>
         </div>
-        <ul className="divide-y divide-line">
-          {weekDays.map((day) => (
-            <li key={day.date} className="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:gap-4">
-              <p className="w-28 shrink-0 text-sm">
-                <span className={today === day.date ? "font-semibold text-accent-text" : "text-muted"}>{formatDay(day.date)}</span>
-                {today === day.date && <span className="ml-1.5 text-xs text-accent-text">today</span>}
-              </p>
-              <ul className="min-w-0 flex-1 space-y-1.5">
-                {day.items.map((item) => {
-                  const watched = pathId !== null && isWatched(pathId, item.titleId);
-                  const id = `sched-${day.date}-${item.titleId}`;
-                  return (
-                    <li key={item.titleId} className="flex items-center gap-2.5">
-                      {pathId !== null ? (
-                        <input
-                          id={id}
-                          type="checkbox"
-                          checked={watched}
-                          onChange={(e) => setWatched(pathId, [item.titleId], e.target.checked)}
-                          className="h-4 w-4 shrink-0 cursor-pointer accent-[var(--color-accent)]"
-                        />
-                      ) : (
-                        <span aria-hidden="true" className="h-2 w-2 shrink-0 rounded-full bg-accent" />
-                      )}
-                      <label htmlFor={id} className={`min-w-0 flex-1 text-sm ${pathId !== null ? "cursor-pointer" : ""} ${watched ? "text-muted line-through" : ""}`}>
-                        {item.title}
-                      </label>
-                      <span className="shrink-0 text-xs text-muted">{formatRuntime(item.runtimeMinutes)}</span>
-                    </li>
-                  );
-                })}
-              </ul>
-            </li>
-          ))}
-        </ul>
-      </section>
-    </div>
-  );
-}
+        {rows.length === 0 ? (
+          <p className="rounded-2xl border border-dashed border-line p-6 text-center text-sm text-muted">Nothing scheduled this week.</p>
+        ) : (
+          <ol className="space-y-3">
+            {rows.map(({ item, date }) => {
+              const t = titleMap.get(item.titleId);
+              if (!t) return null;
+              const watched = pathId !== null && isWatched(pathId, item.titleId);
+              return (
+                <TitleRow
+                  key={item.titleId}
+                  title={t}
+                  position={positions.get(item.titleId)}
+                  watched={watched}
+                  skipped={skipped.has(item.titleId)}
+                  rating={ratingFor(item.titleId)}
+                  date={date}
+                  isToday={today === date}
+                  calendarUrl={googleCalendarUrl({ date, items: [item], minutes: item.runtimeMinutes })}
+                  onToggle={
+                    pathId !== null
+                      ? (value) => {
+                          if (value) {
+                            // Wait for the rating to be confirmed before marking watched, so the
+                            // row's color only changes once rating is done - not on click.
+                            if (ratingFor(item.titleId).mine === null) {
+                              setRatingPrompt({ title: t, pendingWatch: true });
+                              return;
+                            }
+                            markWatchedAndAdvance(item.titleId);
+                          } else {
+                            setWatched(pathId, [item.titleId], false);
+                            if (ratingFor(item.titleId).mine !== null) rateTitle(item.titleId, null);
+                          }
+                        }
+                      : undefined
+                  }
+                  onSkip={
+                    pathId !== null
+                      ? () =>
+                          setSkipped((prev) => {
+                            const next = new Set(prev);
+                            if (next.has(item.titleId)) next.delete(item.titleId);
+                            else next.add(item.titleId);
+                            return next;
+                          })
+                      : undefined
+                  }
+                  onRate={pathId !== null ? () => setRatingPrompt({ title: t, pendingWatch: false }) : undefined}
+                />
+              );
+            })}
+          </ol>
+        )}
+      </div>
 
-function PlanChip({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
-  return (
-    <button
-      type="button"
-      aria-pressed={active}
-      onClick={onClick}
-      className={`rounded-full border px-3 py-1 text-sm transition-colors ${
-        active ? "border-black bg-accent text-white shadow-[2px_2px_0_#000]" : "border-line text-muted hover:border-muted hover:text-ink"
-      }`}
-    >
-      {children}
-    </button>
+      {ratingPrompt && (
+        <RateModal
+          title={ratingPrompt.title}
+          onClose={() => setRatingPrompt(null)}
+          onCancel={() => setRatingPrompt(null)}
+          onRated={ratingPrompt.pendingWatch && pathId !== null ? () => markWatchedAndAdvance(ratingPrompt.title.id) : undefined}
+        />
+      )}
+    </div>
   );
 }
 
@@ -485,9 +479,9 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl bg-surface-2 px-3 py-2.5">
-      <dt className="text-xs text-muted">{label}</dt>
-      <dd className="font-display text-lg font-semibold tabular-nums">{value}</dd>
+    <div className="comic-panel px-4 py-4">
+      <dt className="text-sm text-muted">{label}</dt>
+      <dd className="font-display text-3xl font-semibold tabular-nums sm:text-4xl">{value}</dd>
     </div>
   );
 }

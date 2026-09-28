@@ -23,3 +23,19 @@ export async function POST(req: Request) {
     : reqUrl.origin;
   return NextResponse.json({ url: `${origin}/register?key=${token}` });
 }
+
+/** Deletes every invite link that hasn't been redeemed yet. */
+export async function DELETE() {
+  const g = await guard();
+  if (!g.ok) return g.response;
+  if (g.session.role !== "admin") {
+    return NextResponse.json({ error: "Admin only." }, { status: 403 });
+  }
+
+  const db = admin();
+  if (!db) return NextResponse.json({ error: "Database not configured." }, { status: 503 });
+
+  const { data, error } = await db.from("invite_tokens").delete().is("used_at", null).select("token");
+  if (error) return NextResponse.json({ error: "Couldn't delete unused links." }, { status: 500 });
+  return NextResponse.json({ ok: true, deleted: data?.length ?? 0 });
+}

@@ -164,7 +164,7 @@ function PathPickerDialog() {
         <h2 id="path-picker-title" className="font-display text-3xl text-white [text-shadow:2px_2px_0_#000]">
           Choose your path
         </h2>
-        <p className="mt-2 text-sm text-muted">Pick the watch path that suits you. This sets what you&apos;ll track in the watch order and can&apos;t be changed later.</p>
+        <p className="mt-2 text-sm text-muted">Pick the watch path that suits you. You can switch to a different one anytime from the homepage.</p>
         {error && (
           <p role="alert" className="mt-3 rounded-lg border-2 border-black bg-warn px-3 py-2 text-sm font-medium text-black">
             {error}

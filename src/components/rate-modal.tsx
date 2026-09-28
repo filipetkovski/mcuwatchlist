@@ -8,10 +8,13 @@ export function RateModal({
   title,
   onClose,
   onCancel,
+  onRated,
 }: {
   title: Title;
   onClose: () => void;
   onCancel: () => void;
+  /** Called with the confirmed rating after it's saved - lets the caller mark the title watched only now. */
+  onRated?: (rating: number) => void;
 }) {
   const { ratingFor, rateTitle } = useApp();
   const rating = ratingFor(title.id);
@@ -19,7 +22,9 @@ export function RateModal({
   const [value, setValue] = useState(mine ?? 3);
 
   const confirm = () => {
-    rateTitle(title.id, Math.round(value * 10) / 10);
+    const rounded = Math.round(value * 10) / 10;
+    rateTitle(title.id, rounded);
+    onRated?.(rounded);
     onClose();
   };
 

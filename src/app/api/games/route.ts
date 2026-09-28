@@ -60,14 +60,21 @@ export async function GET() {
       return { id: game.id, opponent: { id: opponentId, username: usernameById.get(opponentId) ?? "Unknown" }, outcome };
     });
 
+  // Every finished game system-wide, so the leaderboard shows each player's overall record -
+  // not just their results from games played against the current viewer.
+  const { data: allFinishedGames, error: allGamesError } = await db
+    .from("tic_tac_toe_games")
+    .select("player_x, player_o, winner, result")
+    .eq("status", "finished");
+  if (allGamesError) return NextResponse.json({ error: "Couldn't load games." }, { status: 500 });
+
   const record = new Map<string, { wins: number; losses: number; draws: number }>();
   const bump = (id: string, key: "wins" | "losses" | "draws") => {
     const entry = record.get(id) ?? { wins: 0, losses: 0, draws: 0 };
     entry[key] += 1;
     record.set(id, entry);
   };
-  for (const game of games) {
-    if (game.status !== "finished") continue;
+  for (const game of allFinishedGames) {
     if (game.result === "draw") {
       bump(game.player_x, "draws");
       bump(game.player_o, "draws");
