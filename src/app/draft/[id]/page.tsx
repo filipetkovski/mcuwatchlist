@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useApp } from "@/components/app-provider";
 import { DRAFT_CHARACTERS } from "@/data/draft-characters";
+import { useSocketRoom } from "@/lib/use-socket-room";
 import type { DraftPick, DraftStatus } from "@/lib/types";
 
 interface Player {
@@ -30,7 +31,6 @@ interface DraftGame {
   result: "win" | "draw" | null;
 }
 
-const POLL_MS = 2000;
 const REVEAL_DELAY_MS = 900;
 
 function characterOf(id: string) {
@@ -72,20 +72,26 @@ export default function DraftGamePage() {
   const [busy, setBusy] = useState(false);
   const [bidValue, setBidValue] = useState("");
 
+  // Initial load
   useEffect(() => {
     let stop = false;
-    const load = async () => {
-      const res = await fetch(`/api/draft/${gameId}`);
-      const body = (await res.json().catch(() => ({}))) as { game?: DraftGame; error?: string };
-      if (stop) return;
-      if (!res.ok || !body.game) { setError(body.error ?? "Couldn't load this draft."); return; }
-      setGame(body.game);
-      setError(null);
-    };
-    void load();
-    const id = window.setInterval(() => void load(), POLL_MS);
-    return () => { stop = true; window.clearInterval(id); };
+    fetch(`/api/draft/${gameId}`)
+      .then((res) => res.json().then((body: { game?: DraftGame; error?: string }) => {
+        if (stop) return;
+        if (!res.ok || !body.game) { setError(body.error ?? "Couldn't load this draft."); return; }
+        setGame(body.game);
+        setError(null);
+      }))
+      .catch(() => { if (!stop) setError("Couldn't load this draft."); });
+    return () => { stop = true; };
   }, [gameId]);
+
+  // Real-time updates via socket
+  useSocketRoom<DraftGame>(
+    user ? `draft:${gameId}:${user.id}` : null,
+    "draft:update",
+    (updated) => { setGame(updated); setError(null); },
+  );
 
   const visibleX = useReveal(game?.picks.x.length ?? 0);
   const visibleO = useReveal(game?.picks.o.length ?? 0);

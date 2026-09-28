@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { DRAFT_GAME_COLUMNS, PICKS_TO_WIN, applyBid, applyLineup, applyPass, toClientDraftGame, validateBid, type DraftGameRow } from "@/lib/draft";
 import { guard } from "@/lib/session";
 import { admin } from "@/lib/supabase/admin";
+import { emitDraftUpdate } from "@/lib/socket-server";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const g = await guard();
@@ -55,7 +56,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       }
     }
 
-    return NextResponse.json({ game: await toClientDraftGame(db, updated, userId) });
+    const [xState, oState] = await Promise.all([
+      toClientDraftGame(db, updated, updated.player_x),
+      toClientDraftGame(db, updated, updated.player_o),
+    ]);
+    emitDraftUpdate(id, updated.player_x, updated.player_o, xState, oState);
+    return NextResponse.json({ game: userId === updated.player_x ? xState : oState });
   }
 
   if (row.status !== "active") return NextResponse.json({ error: "This draft isn't active." }, { status: 409 });
@@ -70,7 +76,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     if (bidError) return NextResponse.json({ error: bidError }, { status: 400 });
     const updated = await applyBid(db, row, userId, amount);
     if (!updated) return NextResponse.json({ error: "Couldn't place your bid." }, { status: 500 });
-    return NextResponse.json({ game: await toClientDraftGame(db, updated, userId) });
+    const [xState, oState] = await Promise.all([
+      toClientDraftGame(db, updated, updated.player_x),
+      toClientDraftGame(db, updated, updated.player_o),
+    ]);
+    emitDraftUpdate(id, updated.player_x, updated.player_o, xState, oState);
+    return NextResponse.json({ game: userId === updated.player_x ? xState : oState });
   }
 
   if (row.current_bidder === null) {
@@ -78,6 +89,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   }
   const updated = await applyPass(db, row);
   if (!updated) return NextResponse.json({ error: "Couldn't save that." }, { status: 500 });
-
-  return NextResponse.json({ game: await toClientDraftGame(db, updated, userId) });
+  const [xState, oState] = await Promise.all([
+    toClientDraftGame(db, updated, updated.player_x),
+    toClientDraftGame(db, updated, updated.player_o),
+  ]);
+  emitDraftUpdate(id, updated.player_x, updated.player_o, xState, oState);
+  return NextResponse.json({ game: userId === updated.player_x ? xState : oState });
 }

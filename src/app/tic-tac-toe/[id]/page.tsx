@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useApp } from "@/components/app-provider";
+import { useSocketRoom } from "@/lib/use-socket-room";
 import type { GameCell, GameQuestion, GameStatus } from "@/lib/types";
 
 interface GamePlayer {
@@ -26,7 +27,6 @@ interface Game {
   wrongAnswers: { x: number; o: number };
 }
 
-const POLL_MS = 2000;
 const MAX_STRIKES = 3;
 
 export default function TicTacToeGamePage() {
@@ -42,20 +42,26 @@ export default function TicTacToeGamePage() {
   const [now, setNow] = useState(() => Date.now());
   const lastQuestionId = useRef<string | null>(null);
 
+  // Initial load
   useEffect(() => {
     let stop = false;
-    const load = async () => {
-      const res = await fetch(`/api/games/${gameId}`);
-      const body = (await res.json().catch(() => ({}))) as { game?: Game; error?: string };
-      if (stop) return;
-      if (!res.ok || !body.game) { setError(body.error ?? "Couldn't load this game."); return; }
-      setGame(body.game);
-      setError(null);
-    };
-    void load();
-    const id = window.setInterval(() => void load(), POLL_MS);
-    return () => { stop = true; window.clearInterval(id); };
+    fetch(`/api/games/${gameId}`)
+      .then((res) => res.json().then((body: { game?: Game; error?: string }) => {
+        if (stop) return;
+        if (!res.ok || !body.game) { setError(body.error ?? "Couldn't load this game."); return; }
+        setGame(body.game);
+        setError(null);
+      }))
+      .catch(() => { if (!stop) setError("Couldn't load this game."); });
+    return () => { stop = true; };
   }, [gameId]);
+
+  // Real-time updates via socket
+  useSocketRoom<Game>(
+    user ? `game:${gameId}:${user.id}` : null,
+    "game:update",
+    (updated) => { setGame(updated); setError(null); },
+  );
 
   useEffect(() => {
     const id = window.setInterval(() => setNow(Date.now()), 500);
