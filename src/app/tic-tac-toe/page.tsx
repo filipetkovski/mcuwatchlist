@@ -56,6 +56,7 @@ export default function TicTacToePage() {
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [joining, setJoining] = useState(false);
+  const [copied, setCopied] = useState(false);
   const pendingOutgoingIds = useRef<Set<string>>(new Set());
 
   const load = useCallback(async () => {
@@ -115,6 +116,14 @@ export default function TicTacToePage() {
     setJoining(false);
   };
 
+  const copyLink = async () => {
+    if (!user) return;
+    const url = `${window.location.origin}/challenge/tic-tac-toe?from=${user.id}`;
+    await navigator.clipboard.writeText(url);
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 2000);
+  };
+
   const hasGameInProgress = data
     ? data.incomingInvites.length > 0 || data.outgoingInvites.length > 0 || data.activeGames.length > 0
     : false;
@@ -163,6 +172,17 @@ export default function TicTacToePage() {
         </div>
       ) : (
         <div className="space-y-6">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-sm text-muted">Challenge a friend directly</p>
+            <button
+              type="button"
+              onClick={() => void copyLink()}
+              className="comic-btn rounded-lg bg-surface-2 px-3 py-1.5 text-sm font-medium text-ink hover:border-accent disabled:opacity-60"
+            >
+              {copied ? "Copied!" : "Copy challenge link"}
+            </button>
+          </div>
+
           {data.incomingInvites.length > 0 && (
             <section className="comic-panel space-y-3 p-4">
               <h2 className="font-display text-xl font-semibold">Invites for you</h2>

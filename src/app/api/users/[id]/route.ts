@@ -6,6 +6,23 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 type Ctx = { params: Promise<{ id: string }> };
 
+export async function GET(_req: NextRequest, ctx: Ctx) {
+  const g = await guard();
+  if (!g.ok) return g.response;
+
+  const { id } = await ctx.params;
+  if (!UUID.test(id)) return NextResponse.json({ error: "Invalid id." }, { status: 400 });
+
+  const db = admin();
+  if (!db) return NextResponse.json({ error: "Database not configured." }, { status: 503 });
+
+  const { data, error } = await db.from("users").select("id, username").eq("id", id).maybeSingle();
+  if (error) return NextResponse.json({ error: "Couldn't load user." }, { status: 500 });
+  if (!data) return NextResponse.json({ error: "User not found." }, { status: 404 });
+
+  return NextResponse.json({ user: { id: data.id, username: data.username } });
+}
+
 export async function DELETE(_req: NextRequest, ctx: Ctx) {
   const g = await guard();
   if (!g.ok) return g.response;
