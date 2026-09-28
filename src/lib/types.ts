@@ -155,6 +155,7 @@ export interface DraftCharacter {
   alignment: DraftAlignment;
   /** 1-100 - shown for flavor and used to decide the winner when the draft ends. */
   power: number;
+  poster_url?: string | null;
 }
 
 /** One of the 10 characters up for bid in a draft game, once picked. */

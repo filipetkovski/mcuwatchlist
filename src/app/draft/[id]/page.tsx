@@ -34,7 +34,7 @@ const POLL_MS = 2000;
 const REVEAL_DELAY_MS = 900;
 
 function characterOf(id: string) {
-  return DRAFT_CHARACTERS.find((c) => c.id === id) ?? { id, name: "Unknown", alignment: "hero" as const, power: 0 };
+  return DRAFT_CHARACTERS.find((c) => c.id === id) ?? { id, name: "Unknown", alignment: "hero" as const, power: 0, poster_url: null };
 }
 
 /** Reveals newly-added picks one at a time instead of dumping them all in at once. */
@@ -224,6 +224,16 @@ export default function DraftGamePage() {
               <p className="text-xs uppercase tracking-widest text-muted">
                 Character {game.round + 1} of {game.characterIds.length}
               </p>
+              {currentCharacter.poster_url && (
+                <div className="mx-auto h-48 w-32 overflow-hidden rounded-lg border-2 border-black shadow-[4px_4px_0_#000]">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={currentCharacter.poster_url}
+                    alt={currentCharacter.name}
+                    className="h-full w-full object-cover object-top"
+                  />
+                </div>
+              )}
               <h2 className="font-display text-3xl font-bold">{currentCharacter.name}</h2>
               <span
                 className={`inline-block rounded-full border-2 border-black px-3 py-0.5 text-xs font-bold uppercase tracking-wide ${
@@ -403,20 +413,30 @@ function PlayerColumn({
         </p>
         <p className="font-mono text-2xl font-bold tabular-nums">${budget}</p>
       </div>
-      <div className="flex flex-wrap gap-1.5" aria-label={`${name}'s picks`}>
+      <div className="flex flex-wrap gap-2" aria-label={`${name}'s picks`}>
         {shown.length === 0 && <span className="text-xs text-muted">No picks yet</span>}
         {shown.map((p) => {
           const c = characterOf(p.characterId);
           return (
-            <span
+            <div
               key={p.characterId}
               title={showPower ? `${c.name} · ${c.power} power · won for $${p.price}` : `${c.name} · won for $${p.price}`}
-              className={`rounded-full border-2 border-black px-2 py-1 text-[11px] font-semibold shadow-[2px_2px_0_#000] transition-opacity ${
+              className={`flex flex-col items-center gap-1 rounded-lg border-2 border-black p-1.5 shadow-[2px_2px_0_#000] transition-opacity ${
                 c.alignment === "hero" ? "bg-emerald-500/30" : "bg-red-600/20"
               }`}
             >
-              {c.name}
-            </span>
+              {c.poster_url ? (
+                <div className="h-14 w-10 overflow-hidden rounded border border-black">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={c.poster_url} alt={c.name} className="h-full w-full object-cover object-top" />
+                </div>
+              ) : (
+                <div className={`flex h-14 w-10 items-center justify-center rounded border border-black text-lg ${c.alignment === "hero" ? "bg-emerald-200" : "bg-red-200"}`}>
+                  {c.alignment === "hero" ? "⚡" : "💀"}
+                </div>
+              )}
+              <span className="max-w-[56px] text-center text-[10px] font-semibold leading-tight">{c.name}</span>
+            </div>
           );
         })}
       </div>
@@ -470,9 +490,20 @@ function LineupBuilder({
                 dragIndex.current = i;
               }}
               onDragEnd={() => { dragIndex.current = null; setDragging(null); }}
-              className={`flex cursor-grab items-center gap-3 rounded-lg border-2 border-black bg-surface-2 px-3 py-2.5 transition-opacity active:cursor-grabbing ${dragging === i ? "opacity-50" : ""}`}
+              className={`flex cursor-grab items-center gap-3 rounded-lg border-2 border-black bg-surface-2 px-3 py-2 transition-opacity active:cursor-grabbing ${dragging === i ? "opacity-50" : ""}`}
             >
               <span className="w-5 shrink-0 text-center font-mono text-sm font-bold text-muted">{i + 1}</span>
+              {c.poster_url ? (
+                <div className="h-10 w-7 shrink-0 overflow-hidden rounded border border-black">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={c.poster_url} alt={c.name} className="h-full w-full object-cover object-top" />
+                </div>
+              ) : (
+                <div className={`flex h-10 w-7 shrink-0 items-center justify-center rounded border border-black text-sm ${c.alignment === "hero" ? "bg-emerald-200" : "bg-red-200"}`}>
+                  {c.alignment === "hero" ? "⚡" : "💀"}
+                </div>
+              )}
+              <span className="flex-1 font-semibold">{c.name}</span>
               <span
                 className={`shrink-0 rounded-full border border-black px-2 py-0.5 text-[10px] font-bold uppercase ${
                   c.alignment === "hero" ? "bg-emerald-500/30 text-emerald-700" : "bg-red-600/20 text-red-700"
@@ -480,7 +511,6 @@ function LineupBuilder({
               >
                 {c.alignment}
               </span>
-              <span className="flex-1 font-semibold">{c.name}</span>
               <span className="flex shrink-0 gap-1">
                 <button
                   type="button"
