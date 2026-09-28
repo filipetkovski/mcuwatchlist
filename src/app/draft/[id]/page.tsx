@@ -215,7 +215,6 @@ export default function DraftGamePage() {
               >
                 {currentCharacter.alignment}
               </span>
-              <p className="font-mono text-lg font-bold tabular-nums">⚡ {currentCharacter.power} power</p>
 
               <div className="mt-2 rounded-lg border-2 border-black bg-surface-2 px-4 py-3">
                 {opening ? (
@@ -240,7 +239,19 @@ export default function DraftGamePage() {
                       You&apos;re out of money - bid $0
                     </button>
                   ) : !canRaise ? (
-                    <p className="text-sm text-muted">You don&apos;t have enough left to raise.</p>
+                    <div className="space-y-2 rounded-lg border-2 border-black bg-surface-2 p-3">
+                      <p className="text-sm font-medium">
+                        You only have <span className="font-mono font-bold">${myBudget}</span> left — you can&apos;t raise {currentBidderName}&apos;s bid of <span className="font-mono font-bold">${game.currentBid}</span>.
+                      </p>
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => void pass()}
+                        className="comic-btn w-full rounded-lg bg-surface px-4 py-2 text-muted hover:text-ink disabled:opacity-60"
+                      >
+                        Pass — let {currentBidderName} have it for ${game.currentBid}
+                      </button>
+                    </div>
                   ) : (
                     <div className="flex items-center justify-center gap-2">
                       <span className="font-mono text-lg">$</span>
@@ -265,7 +276,7 @@ export default function DraftGamePage() {
                       </button>
                     </div>
                   )}
-                  {!opening && (
+                  {!opening && canRaise && (
                     <button
                       type="button"
                       disabled={busy}
@@ -364,7 +375,7 @@ function PlayerColumn({
           return (
             <span
               key={p.characterId}
-              title={`${c.name} · ${c.power} power · won for $${p.price}`}
+              title={showPower ? `${c.name} · ${c.power} power · won for $${p.price}` : `${c.name} · won for $${p.price}`}
               className={`rounded-full border-2 border-black px-2 py-1 text-[11px] font-semibold shadow-[2px_2px_0_#000] transition-opacity ${
                 c.alignment === "hero" ? "bg-emerald-500/30" : "bg-red-600/20"
               }`}
