@@ -2,7 +2,6 @@ import { NextResponse, type NextRequest } from "next/server";
 import { GAME_COLUMNS, TURN_SECONDS, pickQuestionForTurn, toClientGame, type GameRow } from "@/lib/games";
 import { guard } from "@/lib/session";
 import { admin } from "@/lib/supabase/admin";
-import { emitGameUpdate } from "@/lib/socket-server";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const g = await guard();
@@ -30,7 +29,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       .single();
     if (declineError || !declined) return NextResponse.json({ error: "Couldn't decline." }, { status: 500 });
     const clientGame = await toClientGame(db, declined as GameRow);
-    emitGameUpdate(id, declined.player_x, declined.player_o, clientGame, clientGame);
     return NextResponse.json({ game: clientGame });
   }
 
@@ -63,6 +61,5 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     .single();
   if (startError || !started) return NextResponse.json({ error: "Couldn't start the game." }, { status: 500 });
   const clientGame = await toClientGame(db, started as GameRow);
-  emitGameUpdate(id, started.player_x, started.player_o, clientGame, clientGame);
   return NextResponse.json({ game: clientGame });
 }

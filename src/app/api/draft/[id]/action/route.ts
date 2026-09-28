@@ -2,7 +2,6 @@ import { NextResponse, type NextRequest } from "next/server";
 import { DRAFT_GAME_COLUMNS, PICKS_TO_WIN, applyBid, applyLineup, applyPass, toClientDraftGame, validateBid, type DraftGameRow } from "@/lib/draft";
 import { guard } from "@/lib/session";
 import { admin } from "@/lib/supabase/admin";
-import { emitDraftUpdate } from "@/lib/socket-server";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const g = await guard();
@@ -60,7 +59,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       toClientDraftGame(db, updated, updated.player_x),
       toClientDraftGame(db, updated, updated.player_o),
     ]);
-    emitDraftUpdate(id, updated.player_x, updated.player_o, xState, oState);
     return NextResponse.json({ game: userId === updated.player_x ? xState : oState });
   }
 
@@ -80,7 +78,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       toClientDraftGame(db, updated, updated.player_x),
       toClientDraftGame(db, updated, updated.player_o),
     ]);
-    emitDraftUpdate(id, updated.player_x, updated.player_o, xState, oState);
     return NextResponse.json({ game: userId === updated.player_x ? xState : oState });
   }
 
@@ -93,6 +90,5 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     toClientDraftGame(db, updated, updated.player_x),
     toClientDraftGame(db, updated, updated.player_o),
   ]);
-  emitDraftUpdate(id, updated.player_x, updated.player_o, xState, oState);
   return NextResponse.json({ game: userId === updated.player_x ? xState : oState });
 }

@@ -2,10 +2,9 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useApp } from "@/components/app-provider";
 import { DRAFT_CHARACTERS } from "@/data/draft-characters";
-import { useSocketRoom } from "@/lib/use-socket-room";
 import type { DraftPick, DraftStatus } from "@/lib/types";
 
 interface Player {
@@ -32,6 +31,7 @@ interface DraftGame {
 }
 
 const REVEAL_DELAY_MS = 900;
+const POLL_MS = 2000;
 
 function characterOf(id: string) {
   return DRAFT_CHARACTERS.find((c) => c.id === id) ?? { id, name: "Unknown", alignment: "hero" as const, power: 0, poster_url: null };
@@ -73,26 +73,19 @@ export default function DraftGamePage() {
   const [bidValue, setBidValue] = useState("");
   const [confirmSurrender, setConfirmSurrender] = useState(false);
 
-  // Initial load
-  useEffect(() => {
-    let stop = false;
-    fetch(`/api/draft/${gameId}`)
-      .then((res) => res.json().then((body: { game?: DraftGame; error?: string }) => {
-        if (stop) return;
-        if (!res.ok || !body.game) { setError(body.error ?? "Couldn't load this draft."); return; }
-        setGame(body.game);
-        setError(null);
-      }))
-      .catch(() => { if (!stop) setError("Couldn't load this draft."); });
-    return () => { stop = true; };
+  const load = useCallback(async () => {
+    const res = await fetch(`/api/draft/${gameId}`);
+    const body = (await res.json().catch(() => ({}))) as { game?: DraftGame; error?: string };
+    if (!res.ok || !body.game) { setError(body.error ?? "Couldn't load this draft."); return; }
+    setGame(body.game);
+    setError(null);
   }, [gameId]);
 
-  // Real-time updates via socket
-  useSocketRoom<DraftGame>(
-    user ? `draft:${gameId}:${user.id}` : null,
-    "draft:update",
-    (updated) => { setGame(updated); setError(null); },
-  );
+  useEffect(() => {
+    void load();
+    const id = window.setInterval(() => void load(), POLL_MS);
+    return () => window.clearInterval(id);
+  }, [load]);
 
   const visibleX = useReveal(game?.picks.x.length ?? 0);
   const visibleO = useReveal(game?.picks.o.length ?? 0);

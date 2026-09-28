@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { DRAFT_GAME_COLUMNS, toClientDraftGame, type DraftGameRow } from "@/lib/draft";
 import { guard } from "@/lib/session";
 import { admin } from "@/lib/supabase/admin";
-import { emitDraftUpdate } from "@/lib/socket-server";
 
 export async function POST(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const g = await guard();
@@ -42,6 +41,5 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
     toClientDraftGame(db, u, u.player_x),
     toClientDraftGame(db, u, u.player_o),
   ]);
-  emitDraftUpdate(id, u.player_x, u.player_o, xState, oState);
   return NextResponse.json({ game: userId === u.player_x ? xState : oState });
 }

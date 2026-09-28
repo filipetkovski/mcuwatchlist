@@ -12,7 +12,6 @@ import {
 } from "@/lib/games";
 import { guard } from "@/lib/session";
 import { admin } from "@/lib/supabase/admin";
-import { emitGameUpdate } from "@/lib/socket-server";
 import type { GameCell } from "@/lib/types";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -62,7 +61,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const updated = await applyWrongAnswer(db, row, userId);
     if (!updated) return NextResponse.json({ error: "Couldn't save your answer." }, { status: 500 });
     const clientGame = await toClientGame(db, updated);
-    emitGameUpdate(id, updated.player_x, updated.player_o, clientGame, clientGame);
     return NextResponse.json({ game: clientGame, correct: false });
   }
 
@@ -90,7 +88,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     await db.rpc("adjust_vibranium", { p_user_id: userId, p_delta: 100 });
     await db.rpc("adjust_vibranium", { p_user_id: opponentId, p_delta: -50 });
     const clientGame = await toClientGame(db, updated as GameRow);
-    emitGameUpdate(id, updated.player_x, updated.player_o, clientGame, clientGame);
     return NextResponse.json({ game: clientGame, correct: true });
   }
 
@@ -114,7 +111,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     await db.rpc("adjust_vibranium", { p_user_id: row.player_x, p_delta: -10 });
     await db.rpc("adjust_vibranium", { p_user_id: row.player_o, p_delta: -10 });
     const clientGame = await toClientGame(db, updated as GameRow);
-    emitGameUpdate(id, updated.player_x, updated.player_o, clientGame, clientGame);
     return NextResponse.json({ game: clientGame, correct: true });
   }
 
@@ -134,6 +130,5 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     .single();
   if (updateError || !updated) return NextResponse.json({ error: "Couldn't save your move." }, { status: 500 });
   const clientGame = await toClientGame(db, updated as GameRow);
-  emitGameUpdate(id, updated.player_x, updated.player_o, clientGame, clientGame);
   return NextResponse.json({ game: clientGame, correct: true });
 }

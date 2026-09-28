@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { GAME_COLUMNS, toClientGame, type GameRow } from "@/lib/games";
 import { guard } from "@/lib/session";
 import { admin } from "@/lib/supabase/admin";
-import { emitGameUpdate } from "@/lib/socket-server";
 
 export async function POST(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const g = await guard();
@@ -38,6 +37,5 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
   await db.rpc("adjust_vibranium", { p_user_id: userId, p_delta: -50 });
 
   const clientGame = await toClientGame(db, updated as GameRow);
-  emitGameUpdate(id, updated.player_x, updated.player_o, clientGame, clientGame);
   return NextResponse.json({ game: clientGame });
 }
