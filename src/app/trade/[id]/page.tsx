@@ -4,7 +4,29 @@ import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { useApp } from "@/components/app-provider";
 import { DRAFT_CHARACTERS } from "@/data/draft-characters";
-import type { AlbumCollection, TradeRoom } from "@/lib/types";
+import { rarityLabel, rarityOf } from "@/lib/album-data";
+import type { AlbumCollection, AlbumRarity, TradeRoom } from "@/lib/types";
+
+const RARITY_BORDER: Record<AlbumRarity, string> = {
+  legendary: "border-[#c97f10]",
+  rare: "border-[#6b32c4]",
+  uncommon: "border-[#1f8a56]",
+  common: "border-black",
+};
+
+const RARITY_BADGE: Record<AlbumRarity, string> = {
+  legendary: "bg-[#c97f10] text-white",
+  rare: "bg-[#6b32c4] text-white",
+  uncommon: "bg-[#1f8a56] text-white",
+  common: "hidden",
+};
+
+const RARITY_DOT: Record<AlbumRarity, string> = {
+  legendary: "bg-[#c97f10]",
+  rare: "bg-[#6b32c4]",
+  uncommon: "bg-[#1f8a56]",
+  common: "bg-black/30",
+};
 
 const POLL_MS = 2500;
 
@@ -147,11 +169,15 @@ export default function TradeRoomPage() {
                 <p className="text-sm text-muted">Nothing offered yet.</p>
               ) : (
                 <ul className="flex flex-wrap gap-2">
-                  {Array.from(myOfferCounts.entries()).map(([id, count]) => (
-                    <li key={id} className="rounded-full border-2 border-black bg-surface-2 px-3 py-1 text-xs font-medium">
-                      {characterOf(id).name}{count > 1 ? ` x${count}` : ""}
-                    </li>
-                  ))}
+                  {Array.from(myOfferCounts.entries()).map(([id, count]) => {
+                    const rarity = rarityOf(id);
+                    return (
+                      <li key={id} className="inline-flex items-center gap-1.5 rounded-full border-2 border-black bg-surface-2 px-3 py-1 text-xs font-medium">
+                        <span className={`h-2 w-2 shrink-0 rounded-full ${RARITY_DOT[rarity]}`} title={rarityLabel(rarity)} />
+                        {characterOf(id).name}{count > 1 ? ` x${count}` : ""}
+                      </li>
+                    );
+                  })}
                 </ul>
               )}
               <p className="text-xs uppercase tracking-wide text-muted">{myConfirmed ? "You confirmed" : "Not confirmed yet"}</p>
@@ -164,11 +190,13 @@ export default function TradeRoomPage() {
                 <ul className="flex flex-wrap gap-2">
                   {Array.from(theirOfferCounts.entries()).map(([id, count]) => {
                     const alreadyOwned = myCards !== null && (myCards[id] ?? 0) > 0;
+                    const rarity = rarityOf(id);
                     return (
                       <li
                         key={id}
                         className={`inline-flex items-center gap-1.5 rounded-full border-2 border-black px-3 py-1 text-xs font-medium ${alreadyOwned ? "bg-surface-2 text-muted" : "bg-good text-black"}`}
                       >
+                        <span className={`h-2 w-2 shrink-0 rounded-full ${RARITY_DOT[rarity]}`} title={rarityLabel(rarity)} />
                         {characterOf(id).name}{count > 1 ? ` x${count}` : ""}
                         <span className={`rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase ${alreadyOwned ? "bg-black/10" : "bg-black/20"}`}>
                           {alreadyOwned ? "have" : "new!"}
@@ -208,14 +236,18 @@ export default function TradeRoomPage() {
                   const owned = myCards[c.id] ?? 0;
                   const tradeable = owned - 1;
                   const staged = myOfferCounts.get(c.id) ?? 0;
+                  const rarity = rarityOf(c.id);
                   return (
-                    <div key={c.id} className="flex flex-col overflow-hidden rounded-lg border-[3px] border-black bg-surface-2">
+                    <div key={c.id} className={`flex flex-col overflow-hidden rounded-lg border-[3px] bg-surface-2 ${RARITY_BORDER[rarity]}`}>
                       <div className="relative aspect-[2/3] w-full bg-surface">
                         {c.poster_url ? (
                           <img src={c.poster_url} alt={c.name} className="h-full w-full object-cover object-top" />
                         ) : (
                           <div className="flex h-full w-full items-center justify-center text-3xl text-muted/50">?</div>
                         )}
+                        <span className={`absolute left-1 top-1 rounded-full border border-black/20 px-1.5 py-0.5 text-[9px] font-bold uppercase ${RARITY_BADGE[rarity]}`}>
+                          {rarityLabel(rarity)}
+                        </span>
                         <span className="absolute right-1 top-1 rounded-full border-2 border-black bg-warn px-1.5 py-0.5 text-[10px] font-bold text-black">
                           x{tradeable}
                         </span>
