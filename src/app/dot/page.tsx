@@ -1,9 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { VibraniumIcon } from "@/components/vibranium-icon";
 
 type Phase = "idle" | "playing" | "submitting" | "done";
+
+// Minimum ms between two registered taps — faster than this is ignored on the client too.
+const MIN_TAP_INTERVAL = 100;
 
 export default function DotPage() {
   const [phase, setPhase] = useState<Phase>("idle");
@@ -13,25 +16,35 @@ export default function DotPage() {
   const [error, setError] = useState<string | null>(null);
   const [pop, setPop] = useState(false);
 
+  const timestampsRef = useRef<number[]>([]);
+  const lastTapRef = useRef<number>(0);
+
   const start = () => {
+    timestampsRef.current = [];
+    lastTapRef.current = 0;
     setClicks(0);
     setError(null);
     setPhase("playing");
   };
 
   const tap = () => {
+    const now = Date.now();
+    if (now - lastTapRef.current < MIN_TAP_INTERVAL) return; // silently drop too-fast taps
+    lastTapRef.current = now;
+    timestampsRef.current = [...timestampsRef.current, now];
     setClicks((n) => n + 1);
     setPop(true);
     setTimeout(() => setPop(false), 120);
   };
 
   const stop = async () => {
-    if (clicks === 0) { setPhase("idle"); return; }
+    const count = timestampsRef.current.length;
+    if (count === 0) { setPhase("idle"); return; }
     setPhase("submitting");
     const res = await fetch("/api/dot", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ clicks }),
+      body: JSON.stringify({ clicks: count, timestamps: timestampsRef.current }),
     });
     const body = (await res.json().catch(() => ({}))) as { awarded?: number; vibranium?: number; error?: string };
     if (!res.ok) {
@@ -39,12 +52,13 @@ export default function DotPage() {
       setPhase("playing");
       return;
     }
-    setAwarded(body.awarded ?? clicks);
+    setAwarded(body.awarded ?? count);
     setVibranium(body.vibranium ?? 0);
     setPhase("done");
   };
 
   const reset = () => {
+    timestampsRef.current = [];
     setClicks(0);
     setPhase("idle");
   };
