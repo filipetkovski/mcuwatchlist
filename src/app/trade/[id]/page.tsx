@@ -48,14 +48,16 @@ export default function TradeRoomPage() {
 
   const [room, setRoom] = useState<TradeRoom | null>(null);
   const [myCards, setMyCards] = useState<AlbumCollection | null>(null);
+  const [partnerCards, setPartnerCards] = useState<AlbumCollection | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   const loadRoom = useCallback(async () => {
     const res = await fetch(`/api/trade/${roomId}`);
-    const body = (await res.json().catch(() => ({}))) as { room?: TradeRoom; error?: string };
+    const body = (await res.json().catch(() => ({}))) as { room?: TradeRoom; partnerCards?: AlbumCollection; error?: string };
     if (!res.ok || !body.room) { setError(body.error ?? "Couldn't load this room."); return; }
     setRoom(body.room);
+    if (body.partnerCards) setPartnerCards(body.partnerCards);
     setError(null);
   }, [roomId]);
 
@@ -237,6 +239,7 @@ export default function TradeRoomPage() {
                   const tradeable = owned - 1;
                   const staged = myOfferCounts.get(c.id) ?? 0;
                   const rarity = rarityOf(c.id);
+                  const partnerNeeds = partnerCards !== null && (partnerCards[c.id] ?? 0) === 0;
                   return (
                     <div key={c.id} className={`flex flex-col overflow-hidden rounded-lg border-[3px] bg-surface-2 ${RARITY_BORDER[rarity]}`}>
                       <div className="relative aspect-[2/3] w-full bg-surface">
@@ -251,6 +254,11 @@ export default function TradeRoomPage() {
                         <span className="absolute right-1 top-1 rounded-full border-2 border-black bg-warn px-1.5 py-0.5 text-[10px] font-bold text-black">
                           x{tradeable}
                         </span>
+                        {partnerNeeds && (
+                          <span className="absolute bottom-1 left-1/2 -translate-x-1/2 rounded-full border-2 border-black bg-good px-2 py-0.5 text-[9px] font-bold text-black">
+                            they need it
+                          </span>
+                        )}
                       </div>
                       <div className="space-y-1 px-2 py-2 text-center">
                         <p className="truncate text-[11px] font-medium">{c.name}</p>

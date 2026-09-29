@@ -19,7 +19,19 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   if (row.host_id !== userId && row.guest_id !== userId) return NextResponse.json({ error: "Not your room." }, { status: 403 });
 
   const room = await toClientTradeRoom(db, row);
-  return NextResponse.json({ room });
+
+  // Fetch the partner's album so the client can show which cards they're missing.
+  const partnerId = row.host_id === userId ? row.guest_id : row.host_id;
+  let partnerCards: Record<string, number> = {};
+  if (partnerId) {
+    const { data: cardRows } = await db
+      .from("album_cards")
+      .select("character_id, count")
+      .eq("user_id", partnerId);
+    for (const r of cardRows ?? []) partnerCards[r.character_id as string] = r.count as number;
+  }
+
+  return NextResponse.json({ room, partnerCards });
 }
 
 export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
