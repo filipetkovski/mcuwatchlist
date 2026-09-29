@@ -135,3 +135,114 @@ h1.font-display {
   transform-origin: 50% 10%;
   animation: alarm-ring 2.4s ease-in-out infinite;
 }
+
+/* --- Allbum: pack shop + card album animations --- */
+
+@keyframes foil-shimmer {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 200% 50%; }
+}
+
+.pack-foil {
+  background-size: 220% 220%;
+  animation: foil-shimmer 3.2s linear infinite;
+}
+
+@keyframes pack-shake {
+  0%, 100% { transform: rotate(0) scale(1); }
+  20% { transform: rotate(-6deg) scale(1.04); }
+  40% { transform: rotate(5deg) scale(1.06); }
+  60% { transform: rotate(-5deg) scale(1.07); }
+  80% { transform: rotate(4deg) scale(1.05); }
+}
+
+.pack-shake {
+  animation: pack-shake 0.7s ease-in-out infinite;
+}
+
+@keyframes pack-burst {
+  0% { transform: scale(1) rotate(0); opacity: 1; }
+  60% { transform: scale(1.4) rotate(8deg); opacity: 1; }
+  100% { transform: scale(1.7) rotate(8deg); opacity: 0; }
+}
+
+.pack-burst {
+  animation: pack-burst 0.5s ease-out forwards;
+}
+
+@keyframes card-pop-in {
+  0% { transform: translateY(16px) scale(0.85); opacity: 0; }
+  100% { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+.pull-card {
+  perspective: 1000px;
+  width: 118px;
+  height: 168px;
+  animation: card-pop-in 0.35s ease-out backwards;
+}
+
+.pull-card-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  transition: transform 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.pull-card[data-revealed="true"] .pull-card-inner {
+  transform: rotateY(180deg);
+}
+
+.pull-card-face {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  border: 3px solid #000;
+  border-radius: 0.6rem;
+  overflow: hidden;
+}
+
+.pull-card-back {
+  background-image: repeating-linear-gradient(
+    45deg,
+    var(--color-surface-2),
+    var(--color-surface-2) 8px,
+    var(--color-accent) 8px,
+    var(--color-accent) 16px
+  );
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pull-card-front {
+  transform: rotateY(180deg);
+  background: var(--color-surface);
+  display: flex;
+  flex-direction: column;
+}
+
+/* Content swaps at the 45-55% mark, while the page is faded out - reads as one smooth crossfade
+   with a slight directional drift, instead of a hard cut. */
+@keyframes album-slide-next {
+  0% { transform: translateX(0); opacity: 1; }
+  45% { transform: translateX(-14px); opacity: 0; }
+  55% { transform: translateX(14px); opacity: 0; }
+  100% { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes album-slide-prev {
+  0% { transform: translateX(0); opacity: 1; }
+  45% { transform: translateX(14px); opacity: 0; }
+  55% { transform: translateX(-14px); opacity: 0; }
+  100% { transform: translateX(0); opacity: 1; }
+}
+
+.album-page-flip-next {
+  animation: album-slide-next 0.6s ease-in-out;
+}
+
+.album-page-flip-prev {
+  animation: album-slide-prev 0.6s ease-in-out;
+}

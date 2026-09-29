@@ -13,6 +13,7 @@ interface User {
   ratingsNoticeSeen: boolean;
   ticTacToeNoticeSeen: boolean;
   draftNoticeSeen: boolean;
+  albumNoticeSeen: boolean;
 }
 
 interface AppContextValue {
@@ -30,6 +31,7 @@ interface AppContextValue {
   dismissRatingsNotice: () => void;
   dismissTicTacToeNotice: () => void;
   dismissDraftNotice: () => void;
+  dismissAlbumNotice: () => void;
   schedules: SavedSchedule[];
   saveSchedule: (name: string, schedule: GeneratedSchedule) => Promise<SavedSchedule | null>;
   updateSchedule: (id: string, schedule: GeneratedSchedule) => Promise<boolean>;
@@ -101,6 +103,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         ratingsNoticeSeen?: boolean;
         ticTacToeNoticeSeen?: boolean;
         draftNoticeSeen?: boolean;
+        albumNoticeSeen?: boolean;
         expiresAt?: number | null;
       };
       if (!data.configured) {
@@ -114,6 +117,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           ratingsNoticeSeen: data.ratingsNoticeSeen ?? false,
           ticTacToeNoticeSeen: data.ticTacToeNoticeSeen ?? false,
           draftNoticeSeen: data.draftNoticeSeen ?? false,
+          albumNoticeSeen: data.albumNoticeSeen ?? false,
         };
         setUser(u);
         setExpiresAt(data.expiresAt ?? null);
@@ -184,6 +188,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         ratingsNoticeSeen?: boolean;
         ticTacToeNoticeSeen?: boolean;
         draftNoticeSeen?: boolean;
+        albumNoticeSeen?: boolean;
         expiresAt?: number;
       };
       if (!res.ok) return data.error ?? "Couldn't log in.";
@@ -196,6 +201,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         ratingsNoticeSeen: data.ratingsNoticeSeen ?? false,
         ticTacToeNoticeSeen: data.ticTacToeNoticeSeen ?? false,
         draftNoticeSeen: data.draftNoticeSeen ?? false,
+        albumNoticeSeen: data.albumNoticeSeen ?? false,
       };
       setUser(u);
       setExpiresAt(data.expiresAt ?? null);
@@ -285,6 +291,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     api("/api/session/draft-notice", { method: "POST" }).catch(() => {});
   }, [api]);
 
+  const dismissAlbumNotice = useCallback(() => {
+    setUser((u) => (u ? { ...u, albumNoticeSeen: true } : u));
+    api("/api/session/album-notice", { method: "POST" }).catch(() => {});
+  }, [api]);
+
   const saveSchedule = useCallback(
     async (name: string, schedule: GeneratedSchedule) => {
       try {
@@ -351,6 +362,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       dismissRatingsNotice,
       dismissTicTacToeNotice,
       dismissDraftNotice,
+      dismissAlbumNotice,
       schedules,
       saveSchedule,
       updateSchedule,
@@ -372,6 +384,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       dismissRatingsNotice,
       dismissTicTacToeNotice,
       dismissDraftNotice,
+      dismissAlbumNotice,
       schedules,
       saveSchedule,
       updateSchedule,

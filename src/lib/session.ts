@@ -5,7 +5,7 @@ import { NextResponse } from "next/server";
 import type { PathId, UserRole, UserSession } from "@/lib/types";
 
 export const SESSION_COOKIE = "mcuw_session";
-export const SESSION_TTL_SECONDS = 60 * 60;
+export const SESSION_TTL_SECONDS = 24 * 60 * 60;
 
 function secret(): string {
   const value = process.env.SESSION_SECRET;
@@ -23,11 +23,22 @@ export function createSessionToken(
   ratingsNoticeSeen: boolean,
   ticTacToeNoticeSeen: boolean,
   draftNoticeSeen: boolean,
+  albumNoticeSeen: boolean,
   now = Date.now(),
 ): { token: string; expiresAt: number } {
   const expiresAt = now + SESSION_TTL_SECONDS * 1000;
   const payload = Buffer.from(
-    JSON.stringify({ exp: expiresAt, userId, username, role, pathId, ratingsNoticeSeen, ticTacToeNoticeSeen, draftNoticeSeen }),
+    JSON.stringify({
+      exp: expiresAt,
+      userId,
+      username,
+      role,
+      pathId,
+      ratingsNoticeSeen,
+      ticTacToeNoticeSeen,
+      draftNoticeSeen,
+      albumNoticeSeen,
+    }),
   ).toString("base64url");
   return { token: `${payload}.${sign(payload)}`, expiresAt };
 }
@@ -42,7 +53,7 @@ export function readSessionToken(token: string | undefined | null, now = Date.no
   try {
     const d = JSON.parse(Buffer.from(payload, "base64url").toString()) as {
       exp?: unknown; userId?: unknown; username?: unknown; role?: unknown; pathId?: unknown;
-      ratingsNoticeSeen?: unknown; ticTacToeNoticeSeen?: unknown; draftNoticeSeen?: unknown;
+      ratingsNoticeSeen?: unknown; ticTacToeNoticeSeen?: unknown; draftNoticeSeen?: unknown; albumNoticeSeen?: unknown;
     };
     if (typeof d.exp !== "number" || d.exp <= now) return null;
     if (typeof d.userId !== "string" || typeof d.username !== "string") return null;
@@ -55,6 +66,7 @@ export function readSessionToken(token: string | undefined | null, now = Date.no
       ratingsNoticeSeen: d.ratingsNoticeSeen === true,
       ticTacToeNoticeSeen: d.ticTacToeNoticeSeen === true,
       draftNoticeSeen: d.draftNoticeSeen === true,
+      albumNoticeSeen: d.albumNoticeSeen === true,
       expiresAt: d.exp,
     };
   } catch {

@@ -8,6 +8,7 @@ import { SiteFooter } from "@/components/site-footer";
 import { RatingsNotice } from "@/components/ratings-notice";
 import { TicTacToeNotice } from "@/components/tic-tac-toe-notice";
 import { DraftNotice } from "@/components/draft-notice";
+import { AllbumNotice } from "@/components/allbum-notice";
 import { GameInviteBanner } from "@/components/game-invite-banner";
 import { DraftInviteBanner } from "@/components/draft-invite-banner";
 
@@ -41,6 +42,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             <RatingsNotice />
             <TicTacToeNotice />
             <DraftNotice />
+            <AllbumNotice />
             <GameInviteBanner />
             <DraftInviteBanner />
             <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6">{children}</main>

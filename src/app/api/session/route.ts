@@ -25,6 +25,7 @@ export async function GET() {
     ratingsNoticeSeen: session.ratingsNoticeSeen,
     ticTacToeNoticeSeen: session.ticTacToeNoticeSeen,
     draftNoticeSeen: session.draftNoticeSeen,
+    albumNoticeSeen: session.albumNoticeSeen,
     expiresAt: session.expiresAt,
   });
 }
@@ -50,7 +51,9 @@ export async function POST(req: NextRequest) {
 
   const { data, error } = await db
     .from("users")
-    .select("id, username, password_hash, role, path_id, ratings_notice_seen, tic_tac_toe_notice_seen, draft_notice_seen")
+    .select(
+      "id, username, password_hash, role, path_id, ratings_notice_seen, tic_tac_toe_notice_seen, draft_notice_seen, album_notice_seen",
+    )
     .eq("username", username)
     .maybeSingle();
   if (error) return NextResponse.json({ error: "Couldn't check credentials. Is the database set up?" }, { status: 503 });
@@ -71,6 +74,7 @@ export async function POST(req: NextRequest) {
   const ratingsNoticeSeen = data.ratings_notice_seen === true;
   const ticTacToeNoticeSeen = data.tic_tac_toe_notice_seen === true;
   const draftNoticeSeen = data.draft_notice_seen === true;
+  const albumNoticeSeen = data.album_notice_seen === true;
   const { token, expiresAt } = createSessionToken(
     data.id,
     data.username,
@@ -79,6 +83,7 @@ export async function POST(req: NextRequest) {
     ratingsNoticeSeen,
     ticTacToeNoticeSeen,
     draftNoticeSeen,
+    albumNoticeSeen,
   );
   return withSessionCookie(
     NextResponse.json({
@@ -90,6 +95,7 @@ export async function POST(req: NextRequest) {
       ratingsNoticeSeen,
       ticTacToeNoticeSeen,
       draftNoticeSeen,
+      albumNoticeSeen,
       expiresAt,
     }),
     token,

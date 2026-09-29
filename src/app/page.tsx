@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AlbumIcon } from "@/components/album-icon";
 import { CaptainAmericaShield } from "@/components/captain-america-shield";
 import { Countdown } from "@/components/countdown";
 import { PathCards } from "@/components/path-cards";
@@ -54,7 +55,7 @@ export default async function HomePage() {
         <h2 id="games-heading" className="font-display text-2xl font-semibold">
           Games
         </h2>
-        <ul className="grid gap-4 md:grid-cols-2">
+        <ul className="grid gap-4 md:grid-cols-3">
           <li>
             <Link
               href="/tic-tac-toe"
@@ -80,6 +81,20 @@ export default async function HomePage() {
               <p className="relative mt-1 text-sm font-medium text-[#ffcf6b]">Bid your $20 on heroes and villains.</p>
               <p className="relative mt-2 flex-1 text-sm text-white/90">
                 Take turns bidding for 10 characters. Whoever&apos;s 5 picks add up to the most power wins the draft.
+              </p>
+            </Link>
+          </li>
+          <li>
+            <Link
+              href="/allbum"
+              className="relative flex min-h-56 flex-col overflow-hidden comic-panel p-5 transition-transform hover:-translate-y-0.5"
+              style={{ background: "linear-gradient(160deg, #07160c 0%, #123a20 55%, #1f5c33 100%)" }}
+            >
+              <AlbumIcon className="pointer-events-none absolute -bottom-6 -right-6 h-40 w-40 select-none opacity-40" />
+              <h3 className="relative font-display text-xl font-semibold">Allbum</h3>
+              <p className="relative mt-1 text-sm font-medium text-[#9be8b4]">Collect every hero and villain.</p>
+              <p className="relative mt-2 flex-1 text-sm text-white/90">
+                Spend vibraniums on Silver, Gold, and Platinum packs, and fill your album one card at a time.
               </p>
             </Link>
           </li>

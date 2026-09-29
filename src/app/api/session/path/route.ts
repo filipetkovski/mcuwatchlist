@@ -30,6 +30,7 @@ export async function POST(req: NextRequest) {
     session.ratingsNoticeSeen,
     session.ticTacToeNoticeSeen,
     session.draftNoticeSeen,
+    session.albumNoticeSeen,
   );
   return withSessionCookie(NextResponse.json({ ok: true, pathId, expiresAt }), token);
 }

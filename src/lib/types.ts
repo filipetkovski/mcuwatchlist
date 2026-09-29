@@ -8,6 +8,7 @@ export interface UserSession {
   ratingsNoticeSeen: boolean;
   ticTacToeNoticeSeen: boolean;
   draftNoticeSeen: boolean;
+  albumNoticeSeen: boolean;
   expiresAt: number;
 }
 
@@ -163,6 +164,25 @@ export interface DraftPick {
   characterId: string;
   /** What the winner paid for it - 0 when it was handed over for free or auto-assigned. */
   price: number;
+}
+
+export type AlbumPackType = "silver" | "gold" | "platinum";
+
+export type AlbumRarity = "common" | "uncommon" | "rare" | "legendary";
+
+/** One card pulled from a pack. */
+export interface AlbumPull {
+  characterId: string;
+  /** False when the player already owned this character - it went to their duplicates instead. */
+  isNew: boolean;
+}
+
+/** character_id -> how many copies owned (1 = in the album, >1 has duplicates). */
+export type AlbumCollection = Record<string, number>;
+
+export interface AlbumState {
+  vibranium: number;
+  cards: AlbumCollection;
 }
 
 export interface DraftGame {

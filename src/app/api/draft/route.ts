@@ -16,7 +16,7 @@ export async function GET() {
     { data: games, error: gamesError },
     { data: allFinishedGames, error: allGamesError },
   ] = await Promise.all([
-    db.from("users").select("id, username, role, draft_joined").order("username", { ascending: true }),
+    db.from("users").select("id, username, role, vibranium, draft_joined").order("username", { ascending: true }),
     db
       .from("draft_games")
       .select("id, player_x, player_o, status, turn, lineup_x, lineup_o, winner, result, created_at")
@@ -88,8 +88,7 @@ export async function GET() {
   const leaderboard: LeaderboardEntry[] = visibleUsers
     .map((u) => {
       const rec = record.get(u.id) ?? { wins: 0, losses: 0, draws: 0 };
-      const vibranium = rec.wins * 100 - rec.losses * 50 - rec.draws * 10;
-      return { id: u.id, username: u.username, vibranium, ...rec };
+      return { id: u.id, username: u.username, vibranium: u.vibranium, ...rec };
     })
     .sort((a, b) => b.vibranium - a.vibranium);
 

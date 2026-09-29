@@ -21,6 +21,7 @@ export async function POST() {
     session.ratingsNoticeSeen,
     true,
     session.draftNoticeSeen,
+    session.albumNoticeSeen,
   );
   return withSessionCookie(NextResponse.json({ ok: true, expiresAt }), token);
 }

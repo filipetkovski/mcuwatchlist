@@ -10,7 +10,7 @@ export async function POST() {
   const db = admin();
   if (!db) return NextResponse.json({ error: "Database not configured." }, { status: 503 });
 
-  const { error } = await db.from("users").update({ ratings_notice_seen: true }).eq("id", session.userId);
+  const { error } = await db.from("users").update({ album_notice_seen: true }).eq("id", session.userId);
   if (error) return NextResponse.json({ error: "Couldn't save that." }, { status: 500 });
 
   const { token, expiresAt } = createSessionToken(
@@ -18,10 +18,10 @@ export async function POST() {
     session.username,
     session.role,
     session.pathId,
-    true,
+    session.ratingsNoticeSeen,
     session.ticTacToeNoticeSeen,
     session.draftNoticeSeen,
-    session.albumNoticeSeen,
+    true,
   );
   return withSessionCookie(NextResponse.json({ ok: true, expiresAt }), token);
 }
