@@ -74,6 +74,7 @@ export default function AllbumPage() {
   const [page, setPage] = useState(COVER_PAGE);
   const [flipping, setFlipping] = useState<"next" | "prev" | null>(null);
   const [duplicatesOpen, setDuplicatesOpen] = useState(false);
+  const [sellBusy, setSellBusy] = useState(false);
 
   // If the page size changes (e.g. rotating the device) and the current page no longer exists,
   // clamp back to the last real page rather than showing a blank one.
@@ -159,9 +160,27 @@ export default function AllbumPage() {
     window.setTimeout(() => setFlipping(null), 600);
   };
 
+  const sellDuplicates = async () => {
+    setSellBusy(true);
+    setError(null);
+    const res = await fetch("/api/album/sell-duplicates", { method: "POST" });
+    const body = (await res.json().catch(() => ({}))) as { earned?: number; vibranium?: number; error?: string };
+    if (!res.ok) { setError(body.error ?? "Couldn't sell duplicates."); setSellBusy(false); return; }
+    setVibranium(body.vibranium ?? 0);
+    // Reset all duplicate cards to count 1 locally
+    setCards((cur) => {
+      if (!cur) return cur;
+      const next = { ...cur };
+      for (const id of Object.keys(next)) if (next[id] > 1) next[id] = 1;
+      return next;
+    });
+    setSellBusy(false);
+  };
+
   const collectedCount = cards ? Object.keys(cards).length : 0;
   const pageCharacters = page >= 0 ? ALBUM_CHARACTERS.slice(page * pageSize, page * pageSize + pageSize) : [];
   const duplicateCharacters = cards ? ALBUM_CHARACTERS.filter((c) => (cards[c.id] ?? 0) > 1) : [];
+  const totalDuplicateCopies = duplicateCharacters.reduce((sum, c) => sum + (cards?.[c.id] ?? 0) - 1, 0);
 
   return (
     <div className="space-y-6">
@@ -283,17 +302,27 @@ export default function AllbumPage() {
 
           {duplicateCharacters.length > 0 && (
             <section className="comic-panel p-4">
-              <button
-                type="button"
-                onClick={() => setDuplicatesOpen((v) => !v)}
-                aria-expanded={duplicatesOpen}
-                className="flex w-full items-center justify-between gap-3"
-              >
-                <h2 className="font-display text-xl font-semibold">Duplicates ({duplicateCharacters.length})</h2>
-                <span className="comic-btn rounded-md bg-surface-2 px-3 py-1.5 text-sm text-ink">
-                  {duplicatesOpen ? "Hide" : "Show"}
-                </span>
-              </button>
+              <div className="flex items-center justify-between gap-3">
+                <button
+                  type="button"
+                  onClick={() => setDuplicatesOpen((v) => !v)}
+                  aria-expanded={duplicatesOpen}
+                  className="flex items-center gap-2"
+                >
+                  <h2 className="font-display text-xl font-semibold">Duplicates ({duplicateCharacters.length})</h2>
+                  <span className="comic-btn rounded-md bg-surface-2 px-3 py-1.5 text-sm text-ink">
+                    {duplicatesOpen ? "Hide" : "Show"}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  disabled={sellBusy || busyPack !== null || phase !== "idle"}
+                  onClick={() => void sellDuplicates()}
+                  className="comic-btn rounded-md bg-good px-3 py-1.5 text-sm font-medium text-black disabled:opacity-50"
+                >
+                  {sellBusy ? "Selling…" : `Sell all (+${totalDuplicateCopies * 5} ⬡)`}
+                </button>
+              </div>
               {duplicatesOpen && (
                 <div className="mt-4 flex flex-wrap gap-3">
                   {duplicateCharacters.map((c) => {

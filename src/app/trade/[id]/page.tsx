@@ -230,16 +230,26 @@ export default function TradeRoomPage() {
             <h2 className="font-display text-xl font-semibold">Your cards</h2>
             {!myCards ? (
               <p className="text-sm text-muted">Loading…</p>
-            ) : DRAFT_CHARACTERS.filter((c) => (myCards[c.id] ?? 0) > 1).length === 0 ? (
-              <p className="text-sm text-muted">You have no duplicate cards to trade.</p>
-            ) : (
+            ) : (() => {
+              const tradeable = DRAFT_CHARACTERS.filter((c) => {
+                if ((myCards[c.id] ?? 0) <= 1) return false;
+                if (partnerCards !== null && (partnerCards[c.id] ?? 0) > 0) return false;
+                return true;
+              });
+              if (tradeable.length === 0) return (
+                <p className="text-sm text-muted">
+                  {partnerCards !== null
+                    ? "Your partner already has all your duplicate cards."
+                    : "You have no duplicate cards to trade."}
+                </p>
+              );
+              return (
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                {DRAFT_CHARACTERS.filter((c) => (myCards[c.id] ?? 0) > 1).map((c) => {
+                {tradeable.map((c) => {
                   const owned = myCards[c.id] ?? 0;
                   const tradeable = owned - 1;
                   const staged = myOfferCounts.get(c.id) ?? 0;
                   const rarity = rarityOf(c.id);
-                  const partnerNeeds = partnerCards !== null && (partnerCards[c.id] ?? 0) === 0;
                   return (
                     <div key={c.id} className={`flex flex-col overflow-hidden rounded-lg border-[3px] bg-surface-2 ${RARITY_BORDER[rarity]}`}>
                       <div className="relative aspect-[2/3] w-full bg-surface">
@@ -254,11 +264,6 @@ export default function TradeRoomPage() {
                         <span className="absolute right-1 top-1 rounded-full border-2 border-black bg-warn px-1.5 py-0.5 text-[10px] font-bold text-black">
                           x{tradeable}
                         </span>
-                        {partnerNeeds && (
-                          <span className="absolute bottom-1 left-1/2 -translate-x-1/2 rounded-full border-2 border-black bg-good px-2 py-0.5 text-[9px] font-bold text-black">
-                            they need it
-                          </span>
-                        )}
                       </div>
                       <div className="space-y-1 px-2 py-2 text-center">
                         <p className="truncate text-[11px] font-medium">{c.name}</p>
@@ -286,7 +291,8 @@ export default function TradeRoomPage() {
                   );
                 })}
               </div>
-            )}
+              );
+            })()}
           </section>
         </div>
       )}
