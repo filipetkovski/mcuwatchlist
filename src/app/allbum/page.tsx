@@ -32,16 +32,16 @@ function usePageSize(): number {
 }
 
 const RARITY_BORDER: Record<AlbumRarity, string> = {
-  legendary: "border-[#f5a623]",
-  rare: "border-[#9b59f5]",
-  uncommon: "border-[#3db87a]",
+  legendary: "border-[#c97f10]",
+  rare: "border-[#6b32c4]",
+  uncommon: "border-[#1f8a56]",
   common: "border-black",
 };
 
 const RARITY_BADGE: Record<AlbumRarity, string> = {
-  legendary: "bg-[#f5a623] text-black",
-  rare: "bg-[#9b59f5] text-white",
-  uncommon: "bg-[#3db87a] text-black",
+  legendary: "bg-[#c97f10] text-white",
+  rare: "bg-[#6b32c4] text-white",
+  uncommon: "bg-[#1f8a56] text-white",
   common: "hidden",
 };
 

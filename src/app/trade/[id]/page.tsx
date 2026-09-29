@@ -162,11 +162,20 @@ export default function TradeRoomPage() {
                 <p className="text-sm text-muted">Nothing offered yet.</p>
               ) : (
                 <ul className="flex flex-wrap gap-2">
-                  {Array.from(theirOfferCounts.entries()).map(([id, count]) => (
-                    <li key={id} className="rounded-full border-2 border-black bg-surface-2 px-3 py-1 text-xs font-medium">
-                      {characterOf(id).name}{count > 1 ? ` x${count}` : ""}
-                    </li>
-                  ))}
+                  {Array.from(theirOfferCounts.entries()).map(([id, count]) => {
+                    const alreadyOwned = myCards !== null && (myCards[id] ?? 0) > 0;
+                    return (
+                      <li
+                        key={id}
+                        className={`inline-flex items-center gap-1.5 rounded-full border-2 border-black px-3 py-1 text-xs font-medium ${alreadyOwned ? "bg-surface-2 text-muted" : "bg-good text-black"}`}
+                      >
+                        {characterOf(id).name}{count > 1 ? ` x${count}` : ""}
+                        <span className={`rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase ${alreadyOwned ? "bg-black/10" : "bg-black/20"}`}>
+                          {alreadyOwned ? "have" : "new!"}
+                        </span>
+                      </li>
+                    );
+                  })}
                 </ul>
               )}
               <p className="text-xs uppercase tracking-wide text-muted">{theirConfirmed ? "They confirmed" : "Not confirmed yet"}</p>
@@ -191,10 +200,13 @@ export default function TradeRoomPage() {
             <h2 className="font-display text-xl font-semibold">Your cards</h2>
             {!myCards ? (
               <p className="text-sm text-muted">Loading…</p>
+            ) : DRAFT_CHARACTERS.filter((c) => (myCards[c.id] ?? 0) > 1).length === 0 ? (
+              <p className="text-sm text-muted">You have no duplicate cards to trade.</p>
             ) : (
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                {DRAFT_CHARACTERS.filter((c) => (myCards[c.id] ?? 0) > 0).map((c) => {
+                {DRAFT_CHARACTERS.filter((c) => (myCards[c.id] ?? 0) > 1).map((c) => {
                   const owned = myCards[c.id] ?? 0;
+                  const tradeable = owned - 1;
                   const staged = myOfferCounts.get(c.id) ?? 0;
                   return (
                     <div key={c.id} className="flex flex-col overflow-hidden rounded-lg border-[3px] border-black bg-surface-2">
@@ -204,10 +216,12 @@ export default function TradeRoomPage() {
                         ) : (
                           <div className="flex h-full w-full items-center justify-center text-3xl text-muted/50">?</div>
                         )}
+                        <span className="absolute right-1 top-1 rounded-full border-2 border-black bg-warn px-1.5 py-0.5 text-[10px] font-bold text-black">
+                          x{tradeable}
+                        </span>
                       </div>
                       <div className="space-y-1 px-2 py-2 text-center">
                         <p className="truncate text-[11px] font-medium">{c.name}</p>
-                        <p className="text-[10px] text-muted">own {owned}</p>
                         <div className="flex items-center justify-center gap-2">
                           <button
                             type="button"
@@ -220,7 +234,7 @@ export default function TradeRoomPage() {
                           <span className="w-5 text-sm font-bold tabular-nums">{staged}</span>
                           <button
                             type="button"
-                            disabled={busy || staged >= owned}
+                            disabled={busy || staged >= tradeable}
                             onClick={() => adjustOffer(c.id, 1)}
                             className="comic-btn h-7 w-7 rounded-md bg-accent text-sm text-white disabled:opacity-40"
                           >
