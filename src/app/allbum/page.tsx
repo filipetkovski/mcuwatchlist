@@ -7,8 +7,8 @@ import { DoomMask } from "@/components/doom-mask";
 import { IronManMask } from "@/components/iron-man-mask";
 import { VibraniumIcon } from "@/components/vibranium-icon";
 import { DRAFT_CHARACTERS } from "@/data/draft-characters";
-import { PACKS } from "@/lib/album-data";
-import type { AlbumCollection, AlbumPackType, AlbumPull } from "@/lib/types";
+import { PACKS, rarityLabel, rarityOf } from "@/lib/album-data";
+import type { AlbumCollection, AlbumPackType, AlbumPull, AlbumRarity } from "@/lib/types";
 
 /** 8 per page (2 rows of 4) at sm and up, 4 per page (2x2) below that - matches Tailwind's `sm`. */
 const DESKTOP_PAGE_SIZE = 8;
@@ -30,6 +30,20 @@ function usePageSize(): number {
   }, []);
   return pageSize;
 }
+
+const RARITY_BORDER: Record<AlbumRarity, string> = {
+  legendary: "border-[#f5a623]",
+  rare: "border-[#9b59f5]",
+  uncommon: "border-[#3db87a]",
+  common: "border-black",
+};
+
+const RARITY_BADGE: Record<AlbumRarity, string> = {
+  legendary: "bg-[#f5a623] text-black",
+  rare: "bg-[#9b59f5] text-white",
+  uncommon: "bg-[#3db87a] text-black",
+  common: "hidden",
+};
 
 const PACK_FOIL: Record<AlbumPackType, string> = {
   silver: "linear-gradient(120deg,#c8d3e6,#6b7fa8,#c8d3e6)",
@@ -234,10 +248,11 @@ export default function AllbumPage() {
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                   {pageCharacters.map((c) => {
                     const owned = cards[c.id] ?? 0;
+                    const rarity = rarityOf(c.id);
                     return (
                       <div
                         key={c.id}
-                        className="flex flex-col overflow-hidden rounded-lg border-[3px] border-black bg-surface-2"
+                        className={`flex flex-col overflow-hidden rounded-lg border-[3px] bg-surface-2 ${RARITY_BORDER[rarity]}`}
                         title={owned > 0 ? c.name : `${c.name} (not yet collected)`}
                       >
                         <div className="relative aspect-[2/3] w-full bg-surface">
@@ -251,6 +266,9 @@ export default function AllbumPage() {
                               x{owned - 1}
                             </span>
                           )}
+                          <span className={`absolute left-1 top-1 rounded-full border border-black/20 px-1.5 py-0.5 text-[9px] font-bold uppercase ${RARITY_BADGE[rarity]}`}>
+                            {rarityLabel(rarity)}
+                          </span>
                         </div>
                         <div className="px-1.5 py-1 text-center">
                           <p className="truncate text-[11px] font-medium">{c.name}</p>
@@ -414,6 +432,7 @@ function PackOpeningModal({
 
 function PullCardView({ pull, revealed, index }: { pull: AlbumPull; revealed: boolean; index: number }) {
   const character = characterOf(pull.characterId);
+  const rarity = rarityOf(pull.characterId);
 
   return (
     <div className="pull-card" data-revealed={revealed} style={{ animationDelay: `${index * 90}ms` }}>
@@ -421,7 +440,7 @@ function PullCardView({ pull, revealed, index }: { pull: AlbumPull; revealed: bo
         <div className="pull-card-face pull-card-back">
           <VibraniumIcon className="h-8 w-8 opacity-60" />
         </div>
-        <div className="pull-card-face pull-card-front">
+        <div className={`pull-card-face pull-card-front border-[3px] ${RARITY_BORDER[rarity]}`}>
           <div className="relative flex-1 bg-surface">
             {character.poster_url ? (
               <img src={character.poster_url} alt={character.name} className="h-full w-full object-cover object-top" />
@@ -438,6 +457,9 @@ function PullCardView({ pull, revealed, index }: { pull: AlbumPull; revealed: bo
           </div>
           <div className="px-1 py-1 text-center">
             <p className="text-[11px] font-semibold leading-tight">{character.name}</p>
+            <p className={`mt-0.5 rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase ${RARITY_BADGE[rarity]}`}>
+              {rarityLabel(rarity)}
+            </p>
           </div>
         </div>
       </div>
