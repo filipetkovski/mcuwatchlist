@@ -13,6 +13,7 @@ const NAV = [
   { href: "/allbum", label: "Allbum" },
   { href: "/market", label: "Market" },
   { href: "/trade", label: "Trade" },
+  { href: "/dot", label: "Dot" },
 ];
 
 export function SiteHeader() {
