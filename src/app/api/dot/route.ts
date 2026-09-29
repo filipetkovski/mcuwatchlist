@@ -17,11 +17,11 @@ export async function POST(req: NextRequest) {
   }
   const awarded = Math.min(clicks, MAX_CLICKS);
 
-  const { data, error } = await db.rpc("adjust_vibranium", {
+  const { error } = await db.rpc("adjust_vibranium", {
     p_user_id: g.session.userId,
     p_delta: awarded,
   });
-  if (error || data === null) return NextResponse.json({ error: "Couldn't award vibranium." }, { status: 500 });
+  if (error) return NextResponse.json({ error: "Couldn't award vibranium." }, { status: 500 });
 
   const { data: userRow } = await db.from("users").select("vibranium").eq("id", g.session.userId).single();
   return NextResponse.json({ awarded, vibranium: userRow?.vibranium ?? 0 });
