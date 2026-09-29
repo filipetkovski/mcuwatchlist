@@ -5,21 +5,21 @@ import { CARDS_PER_PACK, PACKS, rarityOf, rarityWeightFor } from "@/lib/album-da
 import type { AlbumCollection, AlbumPackType, AlbumPull, AlbumState } from "@/lib/types";
 
 /**
- * Weighted random draw of CARDS_PER_PACK distinct characters - rarer tiers are less likely, and
- * pricier pack types skew the weights toward the rarer tiers (see rarityWeightFor).
+ * Weighted random draw of CARDS_PER_PACK cards - duplicates within a pack are allowed, matching
+ * real trading-card-pack behaviour where the same card can appear twice.
  */
 function drawPack(packType: AlbumPackType): string[] {
   const pool = DRAFT_CHARACTERS.map((c) => ({ id: c.id, weight: rarityWeightFor(packType, rarityOf(c.id)) }));
+  const total = pool.reduce((sum, c) => sum + c.weight, 0);
   const picked: string[] = [];
-  for (let i = 0; i < CARDS_PER_PACK && pool.length > 0; i++) {
-    const total = pool.reduce((sum, c) => sum + c.weight, 0);
+  for (let i = 0; i < CARDS_PER_PACK; i++) {
     let r = Math.random() * total;
     let idx = pool.length - 1;
     for (let j = 0; j < pool.length; j++) {
       r -= pool[j].weight;
       if (r <= 0) { idx = j; break; }
     }
-    picked.push(pool.splice(idx, 1)[0].id);
+    picked.push(pool[idx].id);
   }
   return picked;
 }

@@ -10,28 +10,21 @@ export const PACKS: Record<AlbumPackType, { label: string; cost: number }> = {
 };
 
 /**
- * Rarity tiers ranked by power (strongest characters are rarest): the top ~5% of characters are
- * Legendary, down to the weakest ~50% being Common. `weight` is the Silver-pack pull weight for
- * that tier - Gold and Platinum scale these up for the rarer tiers via PACK_WEIGHT_MULTIPLIERS, so
- * the pricier packs actually pull better odds instead of just the same odds with a bigger price
- * tag. Weights are relative, not literal percentages - within a pack, a character's chance of
- * being drawn is its weight divided by the total remaining weight in the pool.
+ * Rarity tiers ranked by power. Weights are deliberately extreme so commons dominate Silver pulls
+ * (~91% of draws), making uncommons/rares/legendaries genuinely hard to find. Gold and Platinum
+ * packs heavily multiply the rarer tiers so they feel meaningfully better.
  */
 export const RARITY_TIERS: { rarity: AlbumRarity; share: number; weight: number; label: string }[] = [
-  { rarity: "legendary", share: 0.05, weight: 5, label: "Legendary" },
-  { rarity: "rare", share: 0.2, weight: 25, label: "Rare" },
-  { rarity: "uncommon", share: 0.25, weight: 50, label: "Uncommon" },
-  { rarity: "common", share: 0.5, weight: 75, label: "Common" },
+  { rarity: "legendary", share: 0.05, weight: 1, label: "Legendary" },
+  { rarity: "rare", share: 0.2, weight: 5, label: "Rare" },
+  { rarity: "uncommon", share: 0.25, weight: 15, label: "Uncommon" },
+  { rarity: "common", share: 0.5, weight: 100, label: "Common" },
 ];
 
-/**
- * Per-pack multipliers on the Silver weight above: Gold noticeably boosts Legendary/Rare odds
- * (and trims Common a bit to make room), Platinum boosts them further still.
- */
 const PACK_WEIGHT_MULTIPLIERS: Record<AlbumPackType, Record<AlbumRarity, number>> = {
-  silver: { legendary: 1, rare: 1, uncommon: 1, common: 1 },
-  gold: { legendary: 3, rare: 1.5, uncommon: 1, common: 0.8 },
-  platinum: { legendary: 7, rare: 2.5, uncommon: 1, common: 0.5 },
+  silver:   { legendary: 1,  rare: 1,  uncommon: 1,   common: 1   },
+  gold:     { legendary: 8,  rare: 4,  uncommon: 2,   common: 0.6 },
+  platinum: { legendary: 20, rare: 8,  uncommon: 3,   common: 0.3 },
 };
 
 function buildRarityMap(): Map<string, AlbumRarity> {
