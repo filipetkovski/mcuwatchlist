@@ -185,6 +185,41 @@ export interface AlbumState {
   cards: AlbumCollection;
 }
 
+export type MarketListingStatus = "open" | "sold" | "cancelled";
+
+export interface MarketListing {
+  id: string;
+  characterId: string;
+  price: number;
+  seller: GamePlayer;
+  status: MarketListingStatus;
+  createdAt: string;
+}
+
+export type TradeRoomStatus = "open" | "active" | "completed" | "cancelled";
+
+/** A staged trade offer: a character id repeated once per copy being offered. */
+export type TradeOffer = string[];
+
+export interface TradeRoomSummary {
+  id: string;
+  host: GamePlayer;
+  createdAt: string;
+}
+
+export interface TradeRoom {
+  id: string;
+  status: TradeRoomStatus;
+  host: GamePlayer;
+  guest: GamePlayer | null;
+  hostOffer: TradeOffer;
+  guestOffer: TradeOffer;
+  hostConfirmed: boolean;
+  guestConfirmed: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface DraftGame {
   id: string;
   playerX: GamePlayer;

@@ -10,11 +10,26 @@ import { DRAFT_CHARACTERS } from "@/data/draft-characters";
 import { PACKS } from "@/lib/album-data";
 import type { AlbumCollection, AlbumPackType, AlbumPull } from "@/lib/types";
 
-const PAGE_SIZE = 8;
+/** 8 per page (2 rows of 4) at sm and up, 4 per page (2x2) below that - matches Tailwind's `sm`. */
+const DESKTOP_PAGE_SIZE = 8;
+const MOBILE_PAGE_SIZE = 4;
+const MOBILE_BREAKPOINT = "(min-width: 640px)";
+
 const ALBUM_CHARACTERS = [...DRAFT_CHARACTERS].sort((a, b) => a.name.localeCompare(b.name));
-const TOTAL_PAGES = Math.ceil(ALBUM_CHARACTERS.length / PAGE_SIZE);
 /** Page -1 is the cover; character pages start at 0. */
 const COVER_PAGE = -1;
+
+function usePageSize(): number {
+  const [pageSize, setPageSize] = useState(DESKTOP_PAGE_SIZE);
+  useEffect(() => {
+    const mq = window.matchMedia(MOBILE_BREAKPOINT);
+    const update = () => setPageSize(mq.matches ? DESKTOP_PAGE_SIZE : MOBILE_PAGE_SIZE);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+  return pageSize;
+}
 
 const PACK_FOIL: Record<AlbumPackType, string> = {
   silver: "linear-gradient(120deg,#c8d3e6,#6b7fa8,#c8d3e6)",
@@ -39,8 +54,21 @@ export default function AllbumPage() {
   const [pulls, setPulls] = useState<AlbumPull[] | null>(null);
   const [revealedCount, setRevealedCount] = useState(0);
 
+  const pageSize = usePageSize();
+  const totalPages = Math.ceil(ALBUM_CHARACTERS.length / pageSize);
+
   const [page, setPage] = useState(COVER_PAGE);
   const [flipping, setFlipping] = useState<"next" | "prev" | null>(null);
+  const [duplicatesOpen, setDuplicatesOpen] = useState(false);
+
+  // If the page size changes (e.g. rotating the device) and the current page no longer exists,
+  // clamp back to the last real page rather than showing a blank one.
+  useEffect(() => {
+    const id = window.setTimeout(() => {
+      setPage((p) => (p >= 0 ? Math.min(p, totalPages - 1) : p));
+    }, 0);
+    return () => window.clearTimeout(id);
+  }, [totalPages]);
 
   const load = useCallback(async () => {
     const res = await fetch("/api/album");
@@ -111,14 +139,14 @@ export default function AllbumPage() {
 
   const goToPage = (delta: 1 | -1) => {
     const target = page + delta;
-    if (flipping || target < COVER_PAGE || target >= TOTAL_PAGES) return;
+    if (flipping || target < COVER_PAGE || target >= totalPages) return;
     setFlipping(delta === 1 ? "next" : "prev");
     window.setTimeout(() => setPage(target), 300);
     window.setTimeout(() => setFlipping(null), 600);
   };
 
   const collectedCount = cards ? Object.keys(cards).length : 0;
-  const pageCharacters = page >= 0 ? ALBUM_CHARACTERS.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE) : [];
+  const pageCharacters = page >= 0 ? ALBUM_CHARACTERS.slice(page * pageSize, page * pageSize + pageSize) : [];
   const duplicateCharacters = cards ? ALBUM_CHARACTERS.filter((c) => (cards[c.id] ?? 0) > 1) : [];
 
   return (
@@ -181,12 +209,12 @@ export default function AllbumPage() {
                   ←
                 </button>
                 <span className="text-sm text-muted tabular-nums">
-                  {page === COVER_PAGE ? "Cover" : `Page ${page + 1} / ${TOTAL_PAGES}`}
+                  {page === COVER_PAGE ? "Cover" : `Page ${page + 1} / ${totalPages}`}
                 </span>
                 <button
                   type="button"
                   onClick={() => goToPage(1)}
-                  disabled={page === TOTAL_PAGES - 1 || flipping !== null}
+                  disabled={page === totalPages - 1 || flipping !== null}
                   className="comic-btn rounded-md bg-surface-2 px-3 py-1.5 text-sm text-ink disabled:opacity-40"
                   aria-label="Next page"
                 >
@@ -201,7 +229,7 @@ export default function AllbumPage() {
               }
             >
               {page === COVER_PAGE ? (
-                <AlbumCover onOpen={() => goToPage(1)} />
+                <AlbumCover pageSize={pageSize} onOpen={() => goToPage(1)} />
               ) : (
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                   {pageCharacters.map((c) => {
@@ -236,32 +264,44 @@ export default function AllbumPage() {
           </section>
 
           {duplicateCharacters.length > 0 && (
-            <section className="comic-panel space-y-4 p-4">
-              <h2 className="font-display text-xl font-semibold">Duplicates</h2>
-              <div className="flex flex-wrap gap-3">
-                {duplicateCharacters.map((c) => {
-                  const owned = cards[c.id] ?? 0;
-                  return (
-                    <div
-                      key={c.id}
-                      className="w-16 shrink-0 overflow-hidden rounded-lg border-[3px] border-black bg-surface-2"
-                      title={c.name}
-                    >
-                      <div className="relative aspect-[2/3] w-full bg-surface">
-                        {c.poster_url ? (
-                          <img src={c.poster_url} alt={c.name} className="h-full w-full object-cover object-top" />
-                        ) : (
-                          <div className="flex h-full w-full items-center justify-center text-xl text-muted/50">?</div>
-                        )}
-                        <span className="absolute right-1 top-1 rounded-full border-2 border-black bg-warn px-1.5 py-0.5 text-[10px] font-bold text-black">
-                          x{owned - 1}
-                        </span>
+            <section className="comic-panel p-4">
+              <button
+                type="button"
+                onClick={() => setDuplicatesOpen((v) => !v)}
+                aria-expanded={duplicatesOpen}
+                className="flex w-full items-center justify-between gap-3"
+              >
+                <h2 className="font-display text-xl font-semibold">Duplicates ({duplicateCharacters.length})</h2>
+                <span className="comic-btn rounded-md bg-surface-2 px-3 py-1.5 text-sm text-ink">
+                  {duplicatesOpen ? "Hide" : "Show"}
+                </span>
+              </button>
+              {duplicatesOpen && (
+                <div className="mt-4 flex flex-wrap gap-3">
+                  {duplicateCharacters.map((c) => {
+                    const owned = cards[c.id] ?? 0;
+                    return (
+                      <div
+                        key={c.id}
+                        className="w-16 shrink-0 overflow-hidden rounded-lg border-[3px] border-black bg-surface-2"
+                        title={c.name}
+                      >
+                        <div className="relative aspect-[2/3] w-full bg-surface">
+                          {c.poster_url ? (
+                            <img src={c.poster_url} alt={c.name} className="h-full w-full object-cover object-top" />
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center text-xl text-muted/50">?</div>
+                          )}
+                          <span className="absolute right-1 top-1 rounded-full border-2 border-black bg-warn px-1.5 py-0.5 text-[10px] font-bold text-black">
+                            x{owned - 1}
+                          </span>
+                        </div>
+                        <p className="truncate px-1 py-1 text-center text-[10px] font-medium">{c.name}</p>
                       </div>
-                      <p className="truncate px-1 py-1 text-center text-[10px] font-medium">{c.name}</p>
-                    </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
+              )}
             </section>
           )}
         </div>
@@ -405,7 +445,7 @@ function PullCardView({ pull, revealed, index }: { pull: AlbumPull; revealed: bo
   );
 }
 
-function AlbumCover({ onOpen }: { onOpen: () => void }) {
+function AlbumCover({ pageSize, onOpen }: { pageSize: number; onOpen: () => void }) {
   return (
     <div
       className="relative overflow-hidden rounded-lg border-[3px] border-black shadow-[4px_4px_0_#000]"
@@ -413,7 +453,7 @@ function AlbumCover({ onOpen }: { onOpen: () => void }) {
     >
       {/* Invisible copy of a real page's grid, so the cover is exactly as tall as the pages behind it. */}
       <div className="grid grid-cols-2 gap-3 opacity-0 sm:grid-cols-4" aria-hidden="true">
-        {Array.from({ length: PAGE_SIZE }).map((_, i) => (
+        {Array.from({ length: pageSize }).map((_, i) => (
           <div key={i} className="flex flex-col overflow-hidden rounded-lg border-[3px] border-transparent">
             <div className="aspect-[2/3] w-full" />
             <div className="px-1.5 py-1">

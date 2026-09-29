@@ -11,6 +11,8 @@ const NAV = [
   { href: "/tic-tac-toe", label: "Tic-Tac-Toe" },
   { href: "/draft", label: "Draft" },
   { href: "/allbum", label: "Allbum" },
+  { href: "/market", label: "Market" },
+  { href: "/trade", label: "Trade" },
 ];
 
 export function SiteHeader() {
