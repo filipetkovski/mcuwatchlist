@@ -11,9 +11,11 @@ export const PACKS: Record<AlbumPackType, { label: string; cost: number }> = {
 
 /**
  * Rarity tiers ranked by power (strongest characters are rarest): the top ~5% of characters are
- * Legendary and only carry a 5% pull weight each, down to the weakest ~50% being Common at a 75%
- * pull weight each. Weights are relative, not literal percentages - within a pack, a character's
- * chance of being drawn is its weight divided by the total remaining weight in the pool.
+ * Legendary, down to the weakest ~50% being Common. `weight` is the Silver-pack pull weight for
+ * that tier - Gold and Platinum scale these up for the rarer tiers via PACK_WEIGHT_MULTIPLIERS, so
+ * the pricier packs actually pull better odds instead of just the same odds with a bigger price
+ * tag. Weights are relative, not literal percentages - within a pack, a character's chance of
+ * being drawn is its weight divided by the total remaining weight in the pool.
  */
 export const RARITY_TIERS: { rarity: AlbumRarity; share: number; weight: number; label: string }[] = [
   { rarity: "legendary", share: 0.05, weight: 5, label: "Legendary" },
@@ -21,6 +23,16 @@ export const RARITY_TIERS: { rarity: AlbumRarity; share: number; weight: number;
   { rarity: "uncommon", share: 0.25, weight: 50, label: "Uncommon" },
   { rarity: "common", share: 0.5, weight: 75, label: "Common" },
 ];
+
+/**
+ * Per-pack multipliers on the Silver weight above: Gold noticeably boosts Legendary/Rare odds
+ * (and trims Common a bit to make room), Platinum boosts them further still.
+ */
+const PACK_WEIGHT_MULTIPLIERS: Record<AlbumPackType, Record<AlbumRarity, number>> = {
+  silver: { legendary: 1, rare: 1, uncommon: 1, common: 1 },
+  gold: { legendary: 3, rare: 1.5, uncommon: 1, common: 0.8 },
+  platinum: { legendary: 7, rare: 2.5, uncommon: 1, common: 0.5 },
+};
 
 function buildRarityMap(): Map<string, AlbumRarity> {
   const sorted = [...DRAFT_CHARACTERS].sort((a, b) => b.power - a.power);
@@ -48,8 +60,9 @@ function tier(rarity: AlbumRarity) {
   return RARITY_TIERS.find((t) => t.rarity === rarity)!;
 }
 
-export function rarityWeight(rarity: AlbumRarity): number {
-  return tier(rarity).weight;
+/** The pull weight for a rarity within a specific pack type - see PACK_WEIGHT_MULTIPLIERS. */
+export function rarityWeightFor(packType: AlbumPackType, rarity: AlbumRarity): number {
+  return tier(rarity).weight * PACK_WEIGHT_MULTIPLIERS[packType][rarity];
 }
 
 export function rarityLabel(rarity: AlbumRarity): string {

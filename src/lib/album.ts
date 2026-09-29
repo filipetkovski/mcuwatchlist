@@ -1,12 +1,15 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { DRAFT_CHARACTERS } from "@/data/draft-characters";
-import { CARDS_PER_PACK, PACKS, rarityOf, rarityWeight } from "@/lib/album-data";
+import { CARDS_PER_PACK, PACKS, rarityOf, rarityWeightFor } from "@/lib/album-data";
 import type { AlbumCollection, AlbumPackType, AlbumPull, AlbumState } from "@/lib/types";
 
-/** Weighted random draw of CARDS_PER_PACK distinct characters - rarer tiers are less likely. */
-function drawPack(): string[] {
-  const pool = DRAFT_CHARACTERS.map((c) => ({ id: c.id, weight: rarityWeight(rarityOf(c.id)) }));
+/**
+ * Weighted random draw of CARDS_PER_PACK distinct characters - rarer tiers are less likely, and
+ * pricier pack types skew the weights toward the rarer tiers (see rarityWeightFor).
+ */
+function drawPack(packType: AlbumPackType): string[] {
+  const pool = DRAFT_CHARACTERS.map((c) => ({ id: c.id, weight: rarityWeightFor(packType, rarityOf(c.id)) }));
   const picked: string[] = [];
   for (let i = 0; i < CARDS_PER_PACK && pool.length > 0; i++) {
     const total = pool.reduce((sum, c) => sum + c.weight, 0);
@@ -32,9 +35,9 @@ export async function getAlbumState(db: SupabaseClient, userId: string): Promise
 }
 
 /**
- * Spends a pack's cost and grants CARDS_PER_PACK random cards. Both steps are single atomic SQL
- * statements (spend_vibranium, grant_album_cards); if the grant somehow fails after the spend
- * succeeded, the cost is refunded so a broken pack never charges the player.
+ * Spends a pack's cost and grants CARDS_PER_PACK random cards in a single database round trip:
+ * open_pack does the balance check, the deduction, and the card grants as one atomic statement,
+ * and hands back the resulting balance too, so there's no separate follow-up read.
  */
 export async function openPack(
   db: SupabaseClient,
@@ -44,23 +47,19 @@ export async function openPack(
   const pack = PACKS[packType];
   if (!pack) return { error: "Invalid pack." };
 
-  const { data: spent, error: spendError } = await db.rpc("spend_vibranium", { p_user_id: userId, p_amount: pack.cost });
-  if (spendError) return { error: "Couldn't open the pack." };
-  if (spent !== true) return { error: "Not enough vibraniums." };
-
-  const characterIds = drawPack();
-  const { data: granted, error: grantError } = await db.rpc("grant_album_cards", {
+  const characterIds = drawPack(packType);
+  const { data, error } = await db.rpc("open_pack", {
     p_user_id: userId,
+    p_amount: pack.cost,
     p_character_ids: characterIds,
   });
-  if (grantError || !granted) {
-    await db.rpc("adjust_vibranium", { p_user_id: userId, p_delta: pack.cost });
+  if (error) {
+    if (error.message?.includes("insufficient_vibranium")) return { error: "Not enough vibraniums." };
     return { error: "Couldn't open the pack." };
   }
+  if (!data) return { error: "Couldn't open the pack." };
 
-  const isNewById = new Map((granted as { character_id: string; is_new: boolean }[]).map((r) => [r.character_id, r.is_new]));
-  const pulls: AlbumPull[] = characterIds.map((id) => ({ characterId: id, isNew: isNewById.get(id) ?? false }));
-
-  const { data: userRow } = await db.from("users").select("vibranium").eq("id", userId).maybeSingle();
-  return { vibranium: userRow?.vibranium ?? 0, pulls };
+  const result = data as { vibranium: number; pulls: { character_id: string; is_new: boolean }[] };
+  const pulls: AlbumPull[] = result.pulls.map((p) => ({ characterId: p.character_id, isNew: p.is_new }));
+  return { vibranium: result.vibranium, pulls };
 }
