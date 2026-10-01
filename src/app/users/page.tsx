@@ -21,6 +21,8 @@ interface User {
   created_at: string;
   watched: number | null;
   total: number | null;
+  album_cards: number;
+  planner: string | null;
 }
 
 export default function UsersPage() {
@@ -109,6 +111,8 @@ export default function UsersPage() {
                 <th className="px-4 py-3 font-display font-semibold">Role</th>
                 <th className="px-4 py-3 font-display font-semibold">Path</th>
                 <th className="px-4 py-3 font-display font-semibold">Status</th>
+                <th className="px-4 py-3 font-display font-semibold">Album</th>
+                <th className="px-4 py-3 font-display font-semibold">Planner</th>
                 <th className="px-4 py-3 font-display font-semibold">Joined</th>
                 <th className="px-4 py-3"></th>
               </tr>
@@ -144,6 +148,10 @@ export default function UsersPage() {
                       <span className="italic">—</span>
                     )}
                   </td>
+                  <td className="px-4 py-3 text-muted tabular-nums">{u.album_cards} cards</td>
+                  <td className="px-4 py-3 text-muted">
+                    {u.planner ?? <span className="italic">—</span>}
+                  </td>
                   <td className="px-4 py-3 text-muted">{new Date(u.created_at).toLocaleDateString()}</td>
                   <td className="px-4 py-3 text-right">
                     {u.id !== user?.id && (
@@ -161,7 +169,7 @@ export default function UsersPage() {
               ))}
               {users.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-4 py-6 text-center text-muted">No users found.</td>
+                  <td colSpan={9} className="px-4 py-6 text-center text-muted">No users found.</td>
                 </tr>
               )}
             </tbody>

@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { hashPassword } from "@/lib/password";
 import { guard } from "@/lib/session";
 import { admin } from "@/lib/supabase/admin";
-import { titlesForScope } from "@/lib/paths";
+import { SHARED_PROGRESS_KEY, titlesForScope } from "@/lib/paths";
 import { getTitles } from "@/lib/titles";
 import type { PathId, UserRole } from "@/lib/types";
 
@@ -25,38 +25,68 @@ export async function GET() {
   if (error) return NextResponse.json({ error: "Couldn't load users." }, { status: 500 });
 
   const userIds = data.map((u) => u.id);
-  const pathIds = [...new Set(data.map((u) => u.path_id).filter((p): p is string => !!p))];
+  const titles = await getTitles();
 
-  const watchedCounts: Record<string, number> = {};
-  if (userIds.length > 0 && pathIds.length > 0) {
+  // Built-in paths share one progress key, so a user's watched titles are intersected with the
+  // titles in their chosen path's scope.
+  const watchedByUser = new Map<string, Set<string>>();
+  if (userIds.length > 0) {
     for (let from = 0; ; from += PAGE) {
       const { data: rows, error: progError } = await db
         .from("path_progress")
-        .select("user_id, path_id, title_id")
+        .select("user_id, title_id")
         .in("user_id", userIds)
-        .in("path_id", pathIds)
+        .eq("path_id", SHARED_PROGRESS_KEY)
+        .order("user_id")
+        .order("title_id")
         .range(from, from + PAGE - 1);
       if (progError) return NextResponse.json({ error: "Couldn't load progress." }, { status: 500 });
       for (const row of rows) {
-        const key = `${row.user_id}:${row.path_id}`;
-        watchedCounts[key] = (watchedCounts[key] ?? 0) + 1;
+        let set = watchedByUser.get(row.user_id);
+        if (!set) watchedByUser.set(row.user_id, (set = new Set()));
+        set.add(row.title_id);
       }
       if (rows.length < PAGE) break;
     }
   }
 
-  const titles = await getTitles();
-  const totalsByPath = new Map<string, number>();
-
-  const users = data.map((u) => {
-    if (!u.path_id) return { ...u, watched: null, total: null };
-    let total = totalsByPath.get(u.path_id);
-    if (total === undefined) {
-      total = titlesForScope(titles, u.path_id as PathId).length;
-      totalsByPath.set(u.path_id, total);
+  const albumCounts = new Map<string, number>();
+  if (userIds.length > 0) {
+    for (let from = 0; ; from += PAGE) {
+      const { data: rows, error: albumError } = await db
+        .from("album_cards")
+        .select("user_id, character_id")
+        .in("user_id", userIds)
+        .gt("count", 0)
+        .order("user_id")
+        .order("character_id")
+        .range(from, from + PAGE - 1);
+      if (albumError) return NextResponse.json({ error: "Couldn't load albums." }, { status: 500 });
+      for (const row of rows) albumCounts.set(row.user_id, (albumCounts.get(row.user_id) ?? 0) + 1);
+      if (rows.length < PAGE) break;
     }
-    const watched = watchedCounts[`${u.id}:${u.path_id}`] ?? 0;
-    return { ...u, watched, total };
+  }
+
+  const plannerNames = new Map<string, string>();
+  if (userIds.length > 0) {
+    const { data: rows, error: schedError } = await db.from("schedules").select("user_id, name").in("user_id", userIds);
+    if (schedError) return NextResponse.json({ error: "Couldn't load planners." }, { status: 500 });
+    for (const row of rows) plannerNames.set(row.user_id, row.name);
+  }
+
+  const scopeTitleIds = new Map<string, Set<string>>();
+  const users = data.map((u) => {
+    const extra = { album_cards: albumCounts.get(u.id) ?? 0, planner: plannerNames.get(u.id) ?? null };
+    if (!u.path_id) return { ...u, ...extra, watched: null, total: null };
+    let ids = scopeTitleIds.get(u.path_id);
+    if (!ids) {
+      ids = new Set(titlesForScope(titles, u.path_id as PathId).map((t) => t.id));
+      scopeTitleIds.set(u.path_id, ids);
+    }
+    const watchedSet = watchedByUser.get(u.id);
+    let watched = 0;
+    if (watchedSet) for (const id of watchedSet) if (ids.has(id)) watched++;
+    return { ...u, ...extra, watched, total: ids.size };
   });
 
   return NextResponse.json({ users });
